@@ -1,3 +1,4 @@
+// client/src/features/menu/components/ProductModal.tsx
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Product } from "@/features/menu/data/menuData";
@@ -18,7 +19,7 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 modal-overlay"
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/60 backdrop-blur-[2px]" // Fondo un poco más oscuro
           onClick={onClose}
         >
           <motion.div
@@ -27,57 +28,49 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl max-h-[90vh] overflow-hidden"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl"
           >
-            {/* Image */}
-            <div className="relative aspect-square max-h-[50vh]">
+            {/* Imagen Header */}
+            <div className="relative h-64 w-full">
               <img
                 src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-              
-              {/* Close button */}
+              {/* Botón Cerrar flotante */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 w-10 h-10 bg-background/80 backdrop-blur-sm rounded-full flex items-center justify-center text-foreground hover:bg-background transition-colors"
+                className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-sm hover:bg-white transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
-
-              {/* Badges */}
-              <div className="absolute top-4 left-4 flex gap-2">
-                {product.isNew && <span className="badge-new">Nuevo</span>}
-                {product.isSoldOut && <span className="badge-soldout">Agotado</span>}
-              </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6 -mt-8 relative">
-              <div className="flex items-start justify-between mb-4">
-                <h2 className="font-display text-2xl font-bold text-foreground">
+            {/* Contenido Limpio */}
+            <div className="p-6 pt-8"> {/* Padding ajustado */}
+              <div className="flex items-start justify-between mb-3">
+                <h2 className="font-serif text-2xl font-bold text-slate-900 leading-tight">
                   {product.name}
                 </h2>
-                <p className="font-bold text-2xl text-primary">
+                <p className="font-bold text-xl text-amber-600 shrink-0 ml-4">
                   €{product.price.toFixed(2)}
                 </p>
               </div>
 
-              <p className="text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-slate-600 mb-8 leading-relaxed text-sm font-light">
                 {product.fullDescription}
               </p>
 
-              {/* Ingredients */}
-              <div className="mb-6">
-                <h3 className="font-display text-lg font-semibold text-foreground mb-3">
+              {/* Ingredientes Estilo Etiqueta Simple */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Ingredientes
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {product.ingredients.map((ingredient, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1.5 bg-secondary text-secondary-foreground text-sm rounded-full"
+                      className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-md border border-slate-200"
                     >
                       {ingredient}
                     </span>
@@ -85,8 +78,7 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
                 </div>
               </div>
 
-              {/* Safe area padding for mobile */}
-              <div className="h-6" />
+              <div className="h-8" />
             </div>
           </motion.div>
         </motion.div>

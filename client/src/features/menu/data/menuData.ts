@@ -17,6 +17,7 @@ export interface Product {
   isNew?: boolean;
   isSoldOut?: boolean;
   isChefRecommended?: boolean;
+  isDailySpecial?: boolean; // <--- AGREGADO: Nueva propiedad para el carrusel
 }
 
 export interface Category {
@@ -45,6 +46,7 @@ export const products: Product[] = [
     category: "principales",
     isNew: true,
     isChefRecommended: true,
+    isDailySpecial: true, // <--- MODIFICADO: Plato del día
   },
   {
     id: "2",
@@ -56,6 +58,7 @@ export const products: Product[] = [
     image: foodRisotto,
     category: "principales",
     isChefRecommended: true,
+    isDailySpecial: true, // <--- MODIFICADO: Plato del día
   },
   {
     id: "3",
@@ -100,8 +103,76 @@ export const products: Product[] = [
     image: foodPizza,
     category: "pizzas",
   },
+  {
+    id: "7",
+    name: "Tacos al Pastor",
+    description: "Cerdo marinado, piña, cilantro, salsa verde",
+    fullDescription: "Tres tacos servidos en tortilla de maíz nixtamalizada, con cerdo marinado en achiote y especias por 24 horas, asado al trompo. Acompañados de piña asada, cilantro, cebolla picada y nuestra salsa verde de aguacate.",
+    ingredients: ["Tortilla de maíz", "Cerdo marinado", "Piña", "Cilantro", "Cebolla", "Salsa verde"],
+    price: 12.50,
+    image: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80",
+    category: "principales",
+    isDailySpecial: true,
+  },
+  {
+    id: "8",
+    name: "Cheesecake NY",
+    description: "Frutos rojos, base de galleta, menta",
+    fullDescription: "Auténtico estilo New York, denso y cremoso. Base de galleta de vainilla molida, horneado lentamente a baño maría y cubierto con una reducción casera de frutos del bosque y hojas de menta fresca.",
+    ingredients: ["Queso crema", "Galleta vainilla", "Frutos rojos", "Azúcar", "Huevos", "Menta"],
+    price: 8.90,
+    image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=800&q=80",
+    category: "postres",
+    isDailySpecial: true,
+  },
+  {
+    id: "9",
+    name: "Limonada Rosa",
+    description: "Limón, frutilla, menta, hielo picado",
+    fullDescription: "Refrescante limonada preparada al momento con limones sutiles, macerado de frutillas naturales y un toque de almíbar de romero. Servida con mucho hielo picado.",
+    ingredients: ["Limón sutil", "Frutillas", "Almíbar", "Romero", "Agua con gas", "Hielo"],
+    price: 4.50,
+    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+    category: "bebidas",
+    isDailySpecial: true,
+  },
+  {
+    id: "10",
+    name: "Pasta Carbonara",
+    description: "Guanciale, pecorino, yema, pimienta",
+    fullDescription: "La verdadera receta romana. Sin crema. Solo yemas de huevo de campo, queso Pecorino Romano DOP, guanciale crujiente y mucha pimienta negra recién molida sobre spaghetti al dente.",
+    ingredients: ["Spaghetti", "Yema de huevo", "Pecorino Romano", "Guanciale", "Pimienta negra"],
+    price: 19.90,
+    image: "https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80",
+    category: "principales",
+    isDailySpecial: true,
+  },
+  {
+    id: "11",
+    name: "Brownie Vegano",
+    description: "Nueces, cacao 80%, helado de coco",
+    fullDescription: "Húmedo y denso, hecho con cacao amargo al 80%, aceite de coco y nueces mariposa. Servido tibio con una bola de helado de leche de coco artesanal.",
+    ingredients: ["Cacao 80%", "Harina de almendras", "Nueces", "Aceite de coco", "Azúcar de coco"],
+    price: 7.50,
+    image: "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=800&q=80",
+    category: "postres",
+    isDailySpecial: true,
+  },
+  {
+    id: "12",
+    name: "Mojito Clásico",
+    description: "Ron blanco, menta, lima, soda",
+    fullDescription: "El clásico cubano. Ron blanco añejo, hojas de menta fresca machacadas suavemente con azúcar y gajos de lima para liberar sus aceites, completado con soda y hielo.",
+    ingredients: ["Ron blanco", "Menta fresca", "Lima", "Azúcar", "Soda", "Hielo"],
+    price: 9.00,
+    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+    category: "bebidas",
+    isDailySpecial: true,
+  },
 ];
 
-export const getChefRecommendations = () => products.filter(p => p.isChefRecommended);
+// Helper modificado para usar la nueva propiedad
+export const getChefRecommendations = () => products.filter(p => p.isDailySpecial);
+
 export const getProductsByCategory = (categoryId: string) => 
   categoryId === "all" ? products : products.filter(p => p.category === categoryId);
