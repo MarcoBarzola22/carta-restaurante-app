@@ -152,7 +152,21 @@ app.put("/api/products/:id", async (req, res) => {
 app.delete("/api/categories/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    // Opcional: Podrías verificar si hay productos en esta categoría antes de borrar
+    // 1. Verificar si hay productos en esta categoría
+    const productsInCategory = await prisma.product.findMany({
+      where: { categoryId: parseInt(id) },
+      select: { name: true } // Solo necesitamos los nombres para mostrar al usuario
+    });
+
+    // 2. Si hay productos, BLOQUEAMOS y avisamos cuáles son
+    if (productsInCategory.length > 0) {
+      return res.status(409).json({ 
+        error: "Categoría con productos",
+        products: productsInCategory.map(p => p.name) // Enviamos la lista
+      });
+    }
+
+    // 3. Si está vacía, procedemos a borrar
     await prisma.category.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
   } catch (error) {

@@ -2,20 +2,20 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag, Pencil, Trash2, X } from "lucide-react";
+import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// --- PON TUS DATOS DE CLOUDINARY ---
-const CLOUDINARY_CLOUD_NAME = "dkiw87eau"; // Ej: dxy82jk...
-const CLOUDINARY_PRESET = "carta-restaurante";  // Ej: carta-restaurante
+// --- TUS DATOS DE CLOUDINARY ---
+const CLOUDINARY_CLOUD_NAME = "TU_CLOUD_NAME"; 
+const CLOUDINARY_PRESET = "TU_UPLOAD_PRESET"; 
 
 interface Product {
   id: number;
@@ -38,20 +38,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // ESTADOS
+  // ESTADOS DE DATOS
   const [productList, setProductList] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // CONTROL DE UI
+  // ESTADO DEL BUSCADOR
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // ESTADOS DE UI
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   
+  // ESTADO DE ALERTA DE CONFLICTO (Para categoría con productos)
+  const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
+  const [conflictProducts, setConflictProducts] = useState<string[]>([]);
+  
   // EDICIÓN
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  
   const [uploadingImg, setUploadingImg] = useState(false);
 
   // FORMULARIOS
@@ -60,6 +66,7 @@ const Dashboard = () => {
   });
   const [categoryFormName, setCategoryFormName] = useState("");
 
+  // CARGA INICIAL
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
@@ -77,8 +84,18 @@ const Dashboard = () => {
     }
   };
 
-  // --- ACCIONES DE PRODUCTOS ---
+  // --- LÓGICA DEL BUSCADOR ---
+  // Filtramos la lista original basándonos en lo que escribe el usuario
+  const filteredProducts = productList.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
+  const filteredCategories = categories.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // --- ACCIONES PRODUCTOS ---
   const handleDeleteProduct = async (id: number) => {
     if (!confirm("¿Estás seguro de eliminar este plato?")) return;
     try {
@@ -105,10 +122,8 @@ const Dashboard = () => {
     if (!productForm.name || !productForm.price || !productForm.categoryId) {
         toast({ title: "Faltan datos", variant: "destructive" }); return;
     }
-
     try {
       if (editingProduct) {
-        // EDITAR
         const res = await axios.put(`http://localhost:3000/api/products/${editingProduct.id}`, {
             ...productForm,
             isAvailable: editingProduct.isAvailable,
@@ -117,7 +132,6 @@ const Dashboard = () => {
         setProductList(productList.map(p => p.id === editingProduct.id ? res.data : p));
         toast({ title: "Actualizado", description: "Producto modificado correctamente" });
       } else {
-        // CREAR
         const res = await axios.post("http://localhost:3000/api/products", productForm);
         setProductList([res.data, ...productList]);
         toast({ title: "Creado", description: "Nuevo plato agregado" });
@@ -128,15 +142,26 @@ const Dashboard = () => {
     } catch (e) { toast({ title: "Error", variant: "destructive" }); }
   };
 
-  // --- ACCIONES DE CATEGORÍAS ---
-
+  // --- ACCIONES CATEGORÍAS (CON PROTECCIÓN) ---
   const handleDeleteCategory = async (id: number) => {
-    if (!confirm("¿Borrar categoría? Si tiene productos, estos podrían quedar huérfanos.")) return;
+    // Primer aviso simple
+    if (!confirm("¿Intentar eliminar categoría?")) return;
+    
     try {
       await axios.delete(`http://localhost:3000/api/categories/${id}`);
+      // Si pasa (no hay error), la borramos del estado
       setCategories(categories.filter(c => c.id !== id));
-      toast({ title: "Eliminada", description: "Categoría borrada." });
-    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
+      toast({ title: "Eliminada", description: "Categoría borrada correctamente." });
+    } catch (error: any) {
+      // AQUÍ CAPTURAMOS EL BLOQUEO DEL BACKEND
+      if (error.response && error.response.status === 409) {
+        // Guardamos los productos conflictivos y abrimos el modal
+        setConflictProducts(error.response.data.products);
+        setIsConflictDialogOpen(true);
+      } else {
+        toast({ title: "Error", description: "No se pudo eliminar", variant: "destructive" });
+      }
+    }
   };
 
   const handleEditCategoryClick = (category: Category) => {
@@ -163,7 +188,6 @@ const Dashboard = () => {
     } catch (e) { toast({ title: "Error", variant: "destructive" }); }
   };
 
-  // --- EL RESTO (Cloudinary y Switches) ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true);
     const formData = new FormData(); formData.append("file", file); formData.append("upload_preset", CLOUDINARY_PRESET);
@@ -187,23 +211,37 @@ const Dashboard = () => {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
             <ChefHat className="text-primary" />
-            <span className="font-bold">Admin Panel</span>
+            <span className="font-bold hidden md:inline">Admin Panel</span>
         </div>
+        
+        {/* BUSCADOR EN EL HEADER */}
+        <div className="flex-1 max-w-md mx-4 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar platos o categorías..." 
+                className="pl-9 bg-secondary/50 border-transparent focus:bg-background transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+
         <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
       </header>
 
       <main className="container px-4 py-6 max-w-5xl mx-auto">
         <Tabs defaultValue="products">
-            <TabsList className="mb-4">
-                <TabsTrigger value="products">Platos</TabsTrigger>
-                <TabsTrigger value="categories">Categorías</TabsTrigger>
+            <TabsList className="mb-4 w-full md:w-auto">
+                <TabsTrigger value="products" className="flex-1 md:flex-none">Platos ({filteredProducts.length})</TabsTrigger>
+                <TabsTrigger value="categories" className="flex-1 md:flex-none">Categorías ({filteredCategories.length})</TabsTrigger>
             </TabsList>
 
-            {/* --- TABLA PRODUCTOS --- */}
+            {/* --- LISTA FILTRADA DE PRODUCTOS --- */}
             <TabsContent value="products" className="space-y-4">
-                {productList.map((p) => (
-                    <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
-                        <img src={p.image || ""} className="w-16 h-16 rounded-lg bg-slate-200 object-cover" />
+                {filteredProducts.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron productos</p>}
+                
+                {filteredProducts.map((p) => (
+                    <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white transition-opacity ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
+                        <img src={p.image || ""} className="w-16 h-16 rounded-lg bg-slate-200 object-cover border" />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className="font-bold truncate">{p.name}</span>
@@ -223,23 +261,26 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* Botones de Acción */}
                         <div className="flex flex-col gap-2 border-l pl-4">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => handleEditProductClick(p)}><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleEditProductClick(p)}><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                     </div>
                 ))}
             </TabsContent>
 
-            {/* --- TABLA CATEGORÍAS --- */}
+            {/* --- LISTA FILTRADA DE CATEGORÍAS --- */}
             <TabsContent value="categories" className="space-y-2">
-                {categories.map((c) => (
-                    <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between">
-                        <span className="font-medium">🍴 {c.name}</span>
+                {filteredCategories.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron categorías</p>}
+
+                {filteredCategories.map((c) => (
+                    <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between hover:shadow-sm transition-shadow">
+                        <span className="font-medium flex items-center gap-2">
+                            <Tag className="w-4 h-4 text-slate-400"/> {c.name}
+                        </span>
                         <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCategoryClick(c)}><Pencil className="w-4 h-4 text-blue-600" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(c.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditCategoryClick(c)} className="hover:bg-blue-50 text-blue-600"><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(c.id)} className="hover:bg-red-50 text-red-600"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                     </div>
                 ))}
@@ -253,18 +294,45 @@ const Dashboard = () => {
           {isFabOpen && (
             <>
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center gap-2">
-                <span className="bg-white px-2 py-1 rounded text-xs shadow">Categoría</span>
-                <Button onClick={() => { setIsCategoryDialogOpen(true); setIsFabOpen(false); setEditingCategory(null); setCategoryFormName(""); }} className="h-12 w-12 rounded-full bg-blue-600 shadow-lg"><Tag/></Button>
+                <span className="bg-white px-2 py-1 rounded text-xs shadow font-medium">Categoría</span>
+                <Button onClick={() => { setIsCategoryDialogOpen(true); setIsFabOpen(false); setEditingCategory(null); setCategoryFormName(""); }} className="h-12 w-12 rounded-full bg-blue-600 shadow-lg hover:bg-blue-700"><Tag/></Button>
               </motion.div>
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05 }} className="flex items-center gap-2">
-                <span className="bg-white px-2 py-1 rounded text-xs shadow">Plato</span>
-                <Button onClick={() => { setIsProductDialogOpen(true); setIsFabOpen(false); setEditingProduct(null); setProductForm({name:"", description:"", price:"", ingredients:"", categoryId:"", image:""}); }} className="h-12 w-12 rounded-full bg-emerald-600 shadow-lg"><Utensils/></Button>
+                <span className="bg-white px-2 py-1 rounded text-xs shadow font-medium">Plato</span>
+                <Button onClick={() => { setIsProductDialogOpen(true); setIsFabOpen(false); setEditingProduct(null); setProductForm({name:"", description:"", price:"", ingredients:"", categoryId:"", image:""}); }} className="h-12 w-12 rounded-full bg-emerald-600 shadow-lg hover:bg-emerald-700"><Utensils/></Button>
               </motion.div>
             </>
           )}
         </AnimatePresence>
-        <Button onClick={() => setIsFabOpen(!isFabOpen)} className={`h-14 w-14 rounded-full shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary'}`}><Plus/></Button>
+        <Button onClick={() => setIsFabOpen(!isFabOpen)} className={`h-14 w-14 rounded-full shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary hover:scale-105'}`}><Plus/></Button>
       </div>
+
+      {/* --- DIALOGO DE ERROR: CATEGORÍA CON PRODUCTOS --- */}
+      <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
+        <DialogContent className="border-l-4 border-l-red-500">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5"/> No se puede eliminar
+                </DialogTitle>
+                <DialogDescription className="pt-2">
+                    Esta categoría contiene <b>{conflictProducts.length} productos</b>. Debes eliminarlos o cambiarlos de categoría antes de borrarla.
+                </DialogDescription>
+            </DialogHeader>
+            
+            <div className="bg-slate-50 p-3 rounded-md max-h-40 overflow-y-auto border text-sm">
+                <p className="font-semibold mb-2 text-slate-700">Productos en conflicto:</p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                    {conflictProducts.map((name, i) => (
+                        <li key={i}>{name}</li>
+                    ))}
+                </ul>
+            </div>
+
+            <DialogFooter>
+                <Button onClick={() => setIsConflictDialogOpen(false)}>Entendido</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* --- DIALOGO PRODUCTO --- */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
@@ -274,20 +342,40 @@ const Dashboard = () => {
                 <div className="space-y-2">
                     <Label>Foto</Label>
                     <div className="flex gap-2 items-center">
-                        <Input type="file" onChange={handleImageUpload} />
-                        {uploadingImg && <Loader2 className="animate-spin" />}
+                        <Input type="file" onChange={handleImageUpload} className="text-xs"/>
+                        {uploadingImg && <Loader2 className="animate-spin text-primary" />}
                     </div>
-                    {productForm.image && <img src={productForm.image} className="h-20 w-full object-cover rounded" />}
+                    {productForm.image && <img src={productForm.image} className="h-32 w-full object-cover rounded-lg border" />}
                 </div>
-                <Input placeholder="Nombre" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
-                <Input type="number" placeholder="Precio" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
-                <Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}>
-                    <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
-                    <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input placeholder="Ingredientes (separados por coma)" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} />
-                <Textarea placeholder="Descripción" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
-                <Button onClick={handleSaveProduct} className="w-full" disabled={uploadingImg}>{editingProduct ? "Guardar Cambios" : "Crear"}</Button>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Nombre</Label>
+                        <Input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Precio</Label>
+                        <Input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
+                    </div>
+                </div>
+                
+                <div className="space-y-2">
+                    <Label>Categoría</Label>
+                    <Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                        <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Ingredientes</Label>
+                    <Input placeholder="Ej: Tomate, Queso, Albahaca" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} />
+                </div>
+                
+                <div className="space-y-2">
+                    <Label>Descripción</Label>
+                    <Textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
+                </div>
+                <Button onClick={handleSaveProduct} className="w-full" disabled={uploadingImg}>{editingProduct ? "Guardar Cambios" : "Crear Plato"}</Button>
             </div>
         </DialogContent>
       </Dialog>
@@ -296,8 +384,11 @@ const Dashboard = () => {
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent>
             <DialogHeader><DialogTitle>{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle></DialogHeader>
-            <Input placeholder="Nombre" value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} />
-            <Button onClick={handleSaveCategory} className="w-full mt-4">{editingCategory ? "Guardar" : "Crear"}</Button>
+            <div className="py-4">
+                <Label>Nombre</Label>
+                <Input className="mt-2" value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} placeholder="Ej: Bebidas, Postres..." />
+            </div>
+            <Button onClick={handleSaveCategory} className="w-full">{editingCategory ? "Guardar" : "Crear"}</Button>
         </DialogContent>
       </Dialog>
     </div>
