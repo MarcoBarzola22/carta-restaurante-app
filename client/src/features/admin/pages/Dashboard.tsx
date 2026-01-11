@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag } from "lucide-react";
+import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag, Pencil, Trash2, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -11,10 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// -------------------------------------------------------------
-// 👇 PEGA TUS DATOS DE CLOUDINARY AQUÍ
-// -------------------------------------------------------------
+// --- PON TUS DATOS DE CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = "dkiw87eau"; // Ej: dxy82jk...
 const CLOUDINARY_PRESET = "carta-restaurante";  // Ej: carta-restaurante
 
@@ -24,6 +23,7 @@ interface Product {
   description: string | null;
   price: number;
   image: string | null;
+  ingredients: string | null;
   isAvailable: boolean;
   isDailySpecial: boolean;
   categoryId: number;
@@ -38,27 +38,29 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // ESTADOS DE DATOS
+  // ESTADOS
   const [productList, setProductList] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ESTADOS DE INTERFAZ
-  const [isFabOpen, setIsFabOpen] = useState(false); // Para el botón flotante
+  // CONTROL DE UI
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  
+  // EDICIÓN
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  
   const [uploadingImg, setUploadingImg] = useState(false);
 
-  // ESTADOS DE FORMULARIOS
-  const [newProduct, setNewProduct] = useState({
+  // FORMULARIOS
+  const [productForm, setProductForm] = useState({
     name: "", description: "", price: "", ingredients: "", categoryId: "", image: ""
   });
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryFormName, setCategoryFormName] = useState("");
 
-  // 1. CARGA INICIAL
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -75,279 +77,229 @@ const Dashboard = () => {
     }
   };
 
-  // 2. SUBIR FOTO A CLOUDINARY
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImg(true);
-    
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", CLOUDINARY_PRESET); 
+  // --- ACCIONES DE PRODUCTOS ---
 
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm("¿Estás seguro de eliminar este plato?")) return;
     try {
-      const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, formData);
-      setNewProduct({ ...newProduct, image: res.data.secure_url });
-      toast({ title: "Imagen lista", description: "Foto subida correctamente" });
-    } catch (error) {
-      toast({ title: "Error", description: "Revisa tu Cloud Name y Preset en el código", variant: "destructive" });
-    } finally {
-      setUploadingImg(false);
-    }
+      await axios.delete(`http://localhost:3000/api/products/${id}`);
+      setProductList(productList.filter(p => p.id !== id));
+      toast({ title: "Eliminado", description: "El producto se ha borrado." });
+    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
   };
 
-  // 3. SWITCHES (Disponible / Destacado)
-  const handleToggle = async (id: number, field: 'isAvailable' | 'isDailySpecial', currentValue: boolean) => {
-    // Actualización optimista
-    setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: !currentValue } : p));
-
-    try {
-      await axios.patch(`http://localhost:3000/api/products/${id}`, { [field]: !currentValue });
-    } catch (error) {
-      // Revertir
-      setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: currentValue } : p));
-      toast({ title: "Error", description: "No se pudo guardar", variant: "destructive" });
-    }
+  const handleEditProductClick = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description || "",
+      price: String(product.price),
+      ingredients: product.ingredients || "",
+      categoryId: String(product.categoryId),
+      image: product.image || ""
+    });
+    setIsProductDialogOpen(true);
   };
 
-  // 4. CREAR PRODUCTO
-  const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.categoryId || !newProduct.ingredients) {
-      toast({ title: "Faltan datos", description: "Completa los campos obligatorios (*)", variant: "destructive" });
-      return;
+  const handleSaveProduct = async () => {
+    if (!productForm.name || !productForm.price || !productForm.categoryId) {
+        toast({ title: "Faltan datos", variant: "destructive" }); return;
     }
 
     try {
-      const res = await axios.post("http://localhost:3000/api/products", newProduct);
-      setProductList([res.data, ...productList]);
-      setNewProduct({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
+      if (editingProduct) {
+        // EDITAR
+        const res = await axios.put(`http://localhost:3000/api/products/${editingProduct.id}`, {
+            ...productForm,
+            isAvailable: editingProduct.isAvailable,
+            isDailySpecial: editingProduct.isDailySpecial
+        });
+        setProductList(productList.map(p => p.id === editingProduct.id ? res.data : p));
+        toast({ title: "Actualizado", description: "Producto modificado correctamente" });
+      } else {
+        // CREAR
+        const res = await axios.post("http://localhost:3000/api/products", productForm);
+        setProductList([res.data, ...productList]);
+        toast({ title: "Creado", description: "Nuevo plato agregado" });
+      }
       setIsProductDialogOpen(false);
-      setIsFabOpen(false);
-      toast({ title: "¡Plato creado!", description: "Se agregó al menú correctamente." });
-    } catch (error) {
-      toast({ title: "Error", description: "Falló al crear el plato", variant: "destructive" });
-    }
+      setEditingProduct(null);
+      setProductForm({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
+    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
   };
 
-  // 5. CREAR CATEGORÍA
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
+  // --- ACCIONES DE CATEGORÍAS ---
 
+  const handleDeleteCategory = async (id: number) => {
+    if (!confirm("¿Borrar categoría? Si tiene productos, estos podrían quedar huérfanos.")) return;
     try {
-      const res = await axios.post("http://localhost:3000/api/categories", { name: newCategoryName });
-      setCategories([...categories, res.data]);
-      setNewCategoryName("");
-      setIsCategoryDialogOpen(false);
-      setIsFabOpen(false);
-      toast({ title: "Categoría creada", description: `Se agregó "${res.data.name}"` });
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo crear la categoría", variant: "destructive" });
-    }
+      await axios.delete(`http://localhost:3000/api/categories/${id}`);
+      setCategories(categories.filter(c => c.id !== id));
+      toast({ title: "Eliminada", description: "Categoría borrada." });
+    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
+  };
+
+  const handleEditCategoryClick = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryFormName(category.name);
+    setIsCategoryDialogOpen(true);
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    navigate("/login");
+  const handleSaveCategory = async () => {
+    if (!categoryFormName.trim()) return;
+    try {
+        if (editingCategory) {
+            const res = await axios.put(`http://localhost:3000/api/categories/${editingCategory.id}`, { name: categoryFormName });
+            setCategories(categories.map(c => c.id === editingCategory.id ? res.data : c));
+            toast({ title: "Actualizada" });
+        } else {
+            const res = await axios.post("http://localhost:3000/api/categories", { name: categoryFormName });
+            setCategories([...categories, res.data]);
+            toast({ title: "Creada" });
+        }
+        setIsCategoryDialogOpen(false);
+        setEditingCategory(null);
+        setCategoryFormName("");
+    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
   };
 
+  // --- EL RESTO (Cloudinary y Switches) ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true);
+    const formData = new FormData(); formData.append("file", file); formData.append("upload_preset", CLOUDINARY_PRESET);
+    try {
+      const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, formData);
+      setProductForm({ ...productForm, image: res.data.secure_url });
+    } catch (error) { toast({ title: "Error subiendo imagen", variant: "destructive" }); } 
+    finally { setUploadingImg(false); }
+  };
+
+  const handleToggle = async (id: number, field: 'isAvailable' | 'isDailySpecial', val: boolean) => {
+    setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: !val } : p));
+    try { await axios.patch(`http://localhost:3000/api/products/${id}`, { [field]: !val }); } 
+    catch (e) { setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p)); }
+  };
+
+  const handleLogout = () => { localStorage.removeItem("authToken"); navigate("/login"); };
+
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* --- HEADER --- */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="container flex items-center justify-between h-16 px-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary/10 w-10 h-10 rounded-xl flex items-center justify-center">
-              <ChefHat className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-display text-lg font-semibold text-foreground leading-tight">Panel Admin</h1>
-              <p className="text-xs text-muted-foreground">Gestiona tu carta</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-red-500">
-            <LogOut className="w-5 h-5" />
-          </Button>
+    <div className="min-h-screen bg-background relative pb-20">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+            <ChefHat className="text-primary" />
+            <span className="font-bold">Admin Panel</span>
         </div>
+        <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
       </header>
 
-      {/* --- LISTA DE PRODUCTOS --- */}
-      <main className="container px-4 py-6 max-w-4xl mx-auto pb-24">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl font-semibold text-foreground">Menú ({productList.length})</h2>
-        </div>
+      <main className="container px-4 py-6 max-w-5xl mx-auto">
+        <Tabs defaultValue="products">
+            <TabsList className="mb-4">
+                <TabsTrigger value="products">Platos</TabsTrigger>
+                <TabsTrigger value="categories">Categorías</TabsTrigger>
+            </TabsList>
 
-        {loading ? (
-           <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
-        ) : (
-          <div className="space-y-3">
-            {productList.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`p-4 rounded-xl border transition-all ${
-                    !product.isAvailable ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-white border-border shadow-sm'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Imagen */}
-                  <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 relative">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={20}/></div>
-                    )}
-                  </div>
+            {/* --- TABLA PRODUCTOS --- */}
+            <TabsContent value="products" className="space-y-4">
+                {productList.map((p) => (
+                    <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
+                        <img src={p.image || ""} className="w-16 h-16 rounded-lg bg-slate-200 object-cover" />
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold truncate">{p.name}</span>
+                                {p.isDailySpecial && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
+                            </div>
+                            <div className="text-xs text-muted-foreground">${p.price}</div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 items-end mr-4">
+                            <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold ${p.isAvailable ? 'text-green-600' : 'text-slate-400'}`}>{p.isAvailable ? "En Venta" : "Agotado"}</span>
+                                <Switch checked={p.isAvailable} onCheckedChange={() => handleToggle(p.id, 'isAvailable', p.isAvailable)} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground">Destacar</span>
+                                <Switch checked={p.isDailySpecial} onCheckedChange={() => handleToggle(p.id, 'isDailySpecial', p.isDailySpecial)} className="data-[state=checked]:bg-amber-400"/>
+                            </div>
+                        </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
-                        {product.isDailySpecial && (
-                          <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                            <Star size={10} fill="currentColor"/> Plato del Día
-                          </span>
-                        )}
+                        {/* Botones de Acción */}
+                        <div className="flex flex-col gap-2 border-l pl-4">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => handleEditProductClick(p)}><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{product.description || "Sin descripción"}</p>
-                    <p className="font-semibold text-primary mt-1">${product.price}</p>
-                  </div>
+                ))}
+            </TabsContent>
 
-                  {/* Switches */}
-                  <div className="flex flex-col gap-2 items-end">
-                    <div className="flex items-center gap-2">
-                        <span className={`text-[10px] uppercase font-bold ${product.isAvailable ? 'text-green-600' : 'text-red-500'}`}>
-                            {product.isAvailable ? "En Venta" : "Agotado"}
-                        </span>
-                        <Switch checked={product.isAvailable} onCheckedChange={() => handleToggle(product.id, 'isAvailable', product.isAvailable)} />
+            {/* --- TABLA CATEGORÍAS --- */}
+            <TabsContent value="categories" className="space-y-2">
+                {categories.map((c) => (
+                    <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between">
+                        <span className="font-medium">🍴 {c.name}</span>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditCategoryClick(c)}><Pencil className="w-4 h-4 text-blue-600" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(c.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Destacar</span>
-                        <Switch checked={product.isDailySpecial} onCheckedChange={() => handleToggle(product.id, 'isDailySpecial', product.isDailySpecial)} className="data-[state=checked]:bg-amber-500" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                ))}
+            </TabsContent>
+        </Tabs>
       </main>
 
-      {/* --- BOTÓN FLOTANTE (SPEED DIAL) --- */}
+      {/* --- BOTÓN FLOTANTE --- */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
         <AnimatePresence>
           {isFabOpen && (
             <>
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.8 }}
-                className="flex items-center gap-2"
-              >
-                <span className="bg-white px-2 py-1 rounded-md text-xs font-medium shadow text-slate-700">Nueva Categoría</span>
-                <Button 
-                  onClick={() => setIsCategoryDialogOpen(true)} 
-                  className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg"
-                >
-                  <Tag className="w-5 h-5" />
-                </Button>
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center gap-2">
+                <span className="bg-white px-2 py-1 rounded text-xs shadow">Categoría</span>
+                <Button onClick={() => { setIsCategoryDialogOpen(true); setIsFabOpen(false); setEditingCategory(null); setCategoryFormName(""); }} className="h-12 w-12 rounded-full bg-blue-600 shadow-lg"><Tag/></Button>
               </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.8 }}
-                transition={{ delay: 0.05 }}
-                className="flex items-center gap-2"
-              >
-                <span className="bg-white px-2 py-1 rounded-md text-xs font-medium shadow text-slate-700">Nuevo Plato</span>
-                <Button 
-                  onClick={() => setIsProductDialogOpen(true)} 
-                  className="h-12 w-12 rounded-full bg-emerald-600 hover:bg-emerald-700 shadow-lg"
-                >
-                  <Utensils className="w-5 h-5" />
-                </Button>
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05 }} className="flex items-center gap-2">
+                <span className="bg-white px-2 py-1 rounded text-xs shadow">Plato</span>
+                <Button onClick={() => { setIsProductDialogOpen(true); setIsFabOpen(false); setEditingProduct(null); setProductForm({name:"", description:"", price:"", ingredients:"", categoryId:"", image:""}); }} className="h-12 w-12 rounded-full bg-emerald-600 shadow-lg"><Utensils/></Button>
               </motion.div>
             </>
           )}
         </AnimatePresence>
-
-        <Button
-          onClick={() => setIsFabOpen(!isFabOpen)}
-          className={`h-14 w-14 rounded-full shadow-xl transition-all duration-300 ${isFabOpen ? 'bg-slate-800 rotate-45' : 'bg-primary hover:scale-105'}`}
-        >
-          <Plus className="w-7 h-7" />
-        </Button>
+        <Button onClick={() => setIsFabOpen(!isFabOpen)} className={`h-14 w-14 rounded-full shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary'}`}><Plus/></Button>
       </div>
 
-      {/* --- MODAL CREAR PLATO --- */}
+      {/* --- DIALOGO PRODUCTO --- */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nuevo Plato</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-                <Label>Foto del plato</Label>
-                <div className="flex items-center gap-4">
-                    <Input type="file" onChange={handleImageUpload} className="text-xs" />
-                    {uploadingImg && <Loader2 className="animate-spin h-4 w-4 text-primary" />}
-                </div>
-                {newProduct.image && <img src={newProduct.image} className="h-24 w-full object-cover rounded-lg border" />}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{editingProduct ? "Editar Plato" : "Nuevo Plato"}</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                    <Label>Nombre *</Label>
-                    <Input value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
+                    <Label>Foto</Label>
+                    <div className="flex gap-2 items-center">
+                        <Input type="file" onChange={handleImageUpload} />
+                        {uploadingImg && <Loader2 className="animate-spin" />}
+                    </div>
+                    {productForm.image && <img src={productForm.image} className="h-20 w-full object-cover rounded" />}
                 </div>
-                <div className="space-y-2">
-                    <Label>Precio *</Label>
-                    <Input type="number" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
-                </div>
-            </div>
-            <div className="space-y-2">
-                <Label>Categoría *</Label>
-                <Select value={newProduct.categoryId} onValueChange={(val) => setNewProduct({...newProduct, categoryId: val})}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                    <SelectContent>
-                        {categories.map((cat) => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
-                    </SelectContent>
+                <Input placeholder="Nombre" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                <Input type="number" placeholder="Precio" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
+                <Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}>
+                    <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
+                    <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
+                <Input placeholder="Ingredientes (separados por coma)" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} />
+                <Textarea placeholder="Descripción" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
+                <Button onClick={handleSaveProduct} className="w-full" disabled={uploadingImg}>{editingProduct ? "Guardar Cambios" : "Crear"}</Button>
             </div>
-            <div className="space-y-2">
-                <Label>Ingredientes (Obligatorio) *</Label>
-                <Input value={newProduct.ingredients} onChange={(e) => setNewProduct({ ...newProduct, ingredients: e.target.value })} placeholder="Ej: Salsa, Queso, Orégano" />
-            </div>
-            <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} />
-            </div>
-            <Button onClick={handleAddProduct} className="w-full" disabled={uploadingImg}>
-              {uploadingImg ? "Subiendo..." : "Guardar Plato"}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
-      {/* --- MODAL CREAR CATEGORÍA --- */}
+      {/* --- DIALOGO CATEGORÍA --- */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Nueva Categoría</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>Nombre de la Categoría</Label>
-              <Input 
-                value={newCategoryName} 
-                onChange={(e) => setNewCategoryName(e.target.value)} 
-                placeholder="Ej: Promociones, Pastas, Vinos..." 
-              />
-            </div>
-            <Button onClick={handleAddCategory} className="w-full bg-blue-600 hover:bg-blue-700">
-              Crear Categoría
-            </Button>
-          </div>
+        <DialogContent>
+            <DialogHeader><DialogTitle>{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle></DialogHeader>
+            <Input placeholder="Nombre" value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} />
+            <Button onClick={handleSaveCategory} className="w-full mt-4">{editingCategory ? "Guardar" : "Crear"}</Button>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };

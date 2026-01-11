@@ -113,6 +113,68 @@ app.post("/api/categories", async (req, res) => {
   }
 });
 
+// --- RUTA: ELIMINAR PRODUCTO ---
+app.delete("/api/products/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.product.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar producto" });
+  }
+});
+
+// --- RUTA: EDITAR PRODUCTO ---
+app.put("/api/products/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, price, description, isAvailable, isDailySpecial, image, ingredients, categoryId } = req.body;
+  try {
+    const updated = await prisma.product.update({
+      where: { id: parseInt(id) },
+      data: {
+        name,
+        price: parseFloat(price),
+        description,
+        image,
+        isAvailable,
+        isDailySpecial,
+        ingredients,
+        categoryId: parseInt(categoryId)
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Error al editar producto" });
+  }
+});
+
+// --- RUTA: ELIMINAR CATEGORÍA ---
+app.delete("/api/categories/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Opcional: Podrías verificar si hay productos en esta categoría antes de borrar
+    await prisma.category.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar categoría" });
+  }
+});
+
+// --- RUTA: EDITAR CATEGORÍA ---
+app.put("/api/categories/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  try {
+    const updated = await prisma.category.update({
+      where: { id: parseInt(id) },
+      data: { name }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Error al editar categoría" });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
