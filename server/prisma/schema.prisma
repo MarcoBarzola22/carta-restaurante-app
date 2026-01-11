@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // NOTA: Aquí borramos la línea "url" porque ya está configurada en prisma.config.ts
+  url      = env("DATABASE_URL")
 }
 
 // --- TUS MODELOS (Epica: Gestión de Carta) ---

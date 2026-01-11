@@ -1,132 +1,85 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ChefHat, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { ChefHat, Lock, User } from "lucide-react"; // Cambié Mail por User que es más común
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import axios from "axios"; 
 
-const AdminLogin = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+const Login = () => { // Quitamos el "export" de aquí
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
+    setError("");
 
-    // Simulated login - in production, this would connect to a backend
-    setTimeout(() => {
-      if (email === "admin@sabores.com" && password === "admin123") {
-        toast({
-          title: "¡Bienvenido!",
-          description: "Has iniciado sesión correctamente",
-        });
-        navigate("/admin/dashboard");
-      } else {
-        toast({
-          title: "Error de autenticación",
-          description: "Email o contraseña incorrectos",
-          variant: "destructive",
-        });
+    try {
+      // Petición al backend
+      const response = await axios.post("http://localhost:3000/api/auth/login", formData);
+      
+      if (response.data.success) {
+        // Guardamos la sesión
+        localStorage.setItem("authToken", response.data.token);
+        navigate("/admin");
       }
-      setIsLoading(false);
-    }, 1000);
+    } catch (err) {
+      setError("Usuario o contraseña incorrectos");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
-      >
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="chef-recommendation w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <ChefHat className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">
-            Panel de Administración
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Ingresa tus credenciales para continuar
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@sabores.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="p-8">
+          <div className="flex flex-col items-center mb-8">
+            <div className="h-12 w-12 bg-emerald-600 rounded-full flex items-center justify-center mb-4">
+              <ChefHat className="h-6 w-6 text-white" />
             </div>
+            <h1 className="text-2xl font-bold text-slate-900">Bienvenido Chef</h1>
+            <p className="text-slate-500">Ingresa al panel de control</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                <Input 
+                  placeholder="Usuario" 
+                  className="pl-10" 
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                />
+              </div>
             </div>
-          </div>
+            
+            <div className="space-y-2">
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                <Input 
+                  type="password" 
+                  placeholder="Contraseña" 
+                  className="pl-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                />
+              </div>
+            </div>
 
-          <Button
-            type="submit"
-            className="w-full chef-recommendation border-0 hover:opacity-90"
-            disabled={isLoading}
-          >
-            {isLoading ? "Ingresando..." : "Ingresar"}
-          </Button>
-        </form>
+            {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
 
-        {/* Demo credentials */}
-        <div className="mt-6 p-4 bg-secondary rounded-xl">
-          <p className="text-sm text-muted-foreground text-center">
-            <strong>Demo:</strong> admin@sabores.com / admin123
-          </p>
+            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
+              {loading ? "Verificando..." : "Ingresar"}
+            </Button>
+          </form>
         </div>
-
-        {/* Back link */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Volver al menú
-          </button>
-        </div>
-      </motion.div>
+      </div>
     </div>
   );
 };
 
-export default AdminLogin;
+export default Login; // <--- ESTO ES LO QUE FALTABA
