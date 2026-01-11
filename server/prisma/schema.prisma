@@ -1,36 +1,42 @@
 // server/prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // NOTA: Aquí borramos la línea "url" porque ya está configurada en prisma.config.ts
 }
+
+// --- TUS MODELOS (Epica: Gestión de Carta) ---
 
 model Admin {
   id       Int    @id @default(autoincrement())
   username String @unique
-  password String 
+  password String
 }
 
 model Category {
-  id        Int       @id @default(autoincrement())
-  name      String
-  order     Int       @default(0) // Para ordenar (ej: Entradas primero)
-  products  Product[]
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[]
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  price       Decimal  @db.Decimal(10, 2)
-  imageUrl    String?
-  ingredients String?
-  isAvailable Boolean  @default(true) // Switch "Agotado"
-  isNew       Boolean  @default(false) // Etiqueta "Nuevo"
-  categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  image          String?  // URL de Cloudinary
+  ingredients    String?  // Ej: "Tomate, Albahaca, Mozzarella"
+  
+  // Features de estado
+  isAvailable    Boolean  @default(true)  // Switch "Agotado"
+  isNew          Boolean  @default(false) // Badge "Nuevo"
+  isDailySpecial Boolean  @default(false) // Carrusel "Platos del Día"
+  
+  categoryId     Int
+  category       Category @relation(fields: [categoryId], references: [id])
+  createdAt      DateTime @default(now())
 }
