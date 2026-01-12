@@ -8,7 +8,15 @@ dotenv.config(); // Cargar variables de entorno
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors());
+// Configuración de seguridad (CORS)
+const corsOptions = {
+  // Cuando subas a Vercel, aquí pondrás la URL de tu frontend. 
+  // Por ahora el "*" permite a todos, pero lo ajustaremos con las variables de entorno.
+  origin: process.env.FRONTEND_URL || "*", 
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;

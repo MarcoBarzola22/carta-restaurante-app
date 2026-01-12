@@ -16,7 +16,8 @@ import { CartSidebar } from "@/features/menu/components/CartSidebar";
 
 const PublicMenu = () => {
   const { addToCart } = useCart(); // <--- EL CEREBRO DEL CARRITO
-  
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +42,8 @@ const PublicMenu = () => {
     const fetchData = async () => {
       try {
         const [prodRes, catRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/products"),
-          axios.get("http://localhost:3000/api/categories")
+          axios.get(`${API_URL}/api/products`),
+          axios.get(`${API_URL}/api/categories`)
         ]);
 
         const adaptedCategories = catRes.data.map((c: any) => ({

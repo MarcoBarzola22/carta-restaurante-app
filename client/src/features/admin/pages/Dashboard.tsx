@@ -31,6 +31,7 @@ interface Order {
 }
 
 const Dashboard = () => {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -62,9 +63,9 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       const [prodRes, catRes, orderRes] = await Promise.all([
-        axios.get("http://localhost:3000/api/products"),
-        axios.get("http://localhost:3000/api/categories"),
-        axios.get("http://localhost:3000/api/orders")
+        axios.get(`${API_URL}/api/products`),
+        axios.get(`${API_URL}/api/categories`),
+        axios.get(`${API_URL}/api/orders`)
       ]);
       setProductList(prodRes.data);
       setCategories(catRes.data);
@@ -85,10 +86,10 @@ const Dashboard = () => {
     if (!productForm.name || !productForm.price || !productForm.categoryId) return toast({title:"Faltan datos", variant:"destructive"});
     try {
       if (editingProduct) {
-        const res = await axios.put(`http://localhost:3000/api/products/${editingProduct.id}`, { ...productForm, isAvailable: editingProduct.isAvailable, isDailySpecial: editingProduct.isDailySpecial });
+        const res = await axios.put(`${API_URL}/api/products/${editingProduct.id}`, { ...productForm, isAvailable: editingProduct.isAvailable, isDailySpecial: editingProduct.isDailySpecial });
         setProductList(productList.map(p => p.id === editingProduct.id ? res.data : p));
       } else {
-        const res = await axios.post("http://localhost:3000/api/products", productForm);
+        const res = await axios.post(`${API_URL}/api/products`, productForm);
         setProductList([res.data, ...productList]);
       }
       setIsProductDialogOpen(false); setEditingProduct(null); setProductForm({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
@@ -98,12 +99,12 @@ const Dashboard = () => {
 
   const handleDeleteProduct = async (id: number) => {
     if(!confirm("¿Eliminar plato?")) return;
-    try { await axios.delete(`http://localhost:3000/api/products/${id}`); setProductList(productList.filter(p=>p.id!==id)); } catch(e){ toast({title:"Error", variant:"destructive"}); }
+    try { await axios.delete(`${API_URL}/api/products/${id}`); setProductList(productList.filter(p=>p.id!==id)); } catch(e){ toast({title:"Error", variant:"destructive"}); }
   };
 
   const handleToggle = async (id: number, field: string, val: boolean) => {
     setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: !val } : p));
-    try { await axios.patch(`http://localhost:3000/api/products/${id}`, { [field]: !val }); } 
+    try { await axios.patch(`${API_URL}/api/products/${id}`, { [field]: !val }); } 
     catch (e) { setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p)); }
   };
 
@@ -111,10 +112,10 @@ const Dashboard = () => {
     if(!categoryFormName) return;
     try {
         if(editingCategory) {
-            const res = await axios.put(`http://localhost:3000/api/categories/${editingCategory.id}`, {name:categoryFormName});
+            const res = await axios.put(`${API_URL}/api/categories/${editingCategory.id}`, {name:categoryFormName});
             setCategories(categories.map(c=>c.id===editingCategory.id?res.data:c));
         } else {
-            const res = await axios.post("http://localhost:3000/api/categories", {name:categoryFormName});
+            const res = await axios.post(`${API_URL}/api/categories`, {name:categoryFormName});
             setCategories([...categories, res.data]);
         }
         setIsCategoryDialogOpen(false); setEditingCategory(null); setCategoryFormName("");
@@ -125,7 +126,7 @@ const Dashboard = () => {
   const handleDeleteCategory = async (id: number) => {
     if(!confirm("¿Eliminar?")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/categories/${id}`);
+      await axios.delete(`${API_URL}/api/categories/${id}`);
       setCategories(categories.filter(c=>c.id!==id));
     } catch (error: any) {
       if (error.response && error.response.status === 409) {
