@@ -1,5 +1,6 @@
-import { Product } from "@/features/menu/data/menuData";
+import { Product } from "../data/menuData";
 import ProductCard from "./ProductCard";
+import { useCart } from "@/context/CartContext"; // <--- Importamos el carrito
 
 interface ProductListProps {
   products: Product[];
@@ -7,25 +8,28 @@ interface ProductListProps {
 }
 
 const ProductList = ({ products, onProductClick }: ProductListProps) => {
+  const { addToCart } = useCart(); // <--- Hook del carrito
+
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <p className="text-muted-foreground text-center">
-          No hay productos en esta categoría
-        </p>
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No hay productos en esta categoría.</p>
       </div>
     );
   }
 
   return (
-    <section className="py-4">
-      <div className="px-4 space-y-3">
-        {products.map((product, index) => (
+    <section className="px-4 pb-20">
+      <div className="space-y-4"> {/* <--- ESPACIADO VERTICAL SIMPLE (COMO ANTES) */}
+        {products.map((product) => (
           <ProductCard
             key={product.id}
             product={product}
-            onClick={() => !product.isSoldOut && onProductClick(product)}
-            index={index}
+            onClick={onProductClick}
+            onAdd={(e) => {
+               e.stopPropagation(); // Para que no se abra el modal al dar al (+)
+               addToCart(product);
+            }}
           />
         ))}
       </div>

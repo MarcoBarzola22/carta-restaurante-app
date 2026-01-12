@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
+import { ChefHat, Plus, LogOut, Loader2, Star, Utensils, Tag, Pencil, Trash2, Search, AlertTriangle, Receipt, Clock, MapPin, User } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,25 +13,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// --- TUS DATOS DE CLOUDINARY ---
+// DATOS CLOUDINARY
 const CLOUDINARY_CLOUD_NAME = "TU_CLOUD_NAME"; 
 const CLOUDINARY_PRESET = "TU_UPLOAD_PRESET"; 
 
-interface Product {
-  id: number;
-  name: string;
-  description: string | null;
-  price: number;
-  image: string | null;
-  ingredients: string | null;
-  isAvailable: boolean;
-  isDailySpecial: boolean;
-  categoryId: number;
-}
-
-interface Category {
-  id: number;
-  name: string;
+interface Order {
+    id: number;
+    customer: string;
+    address?: string;
+    type: string;
+    total: number;
+    details: string;
+    createdAt: string;
 }
 
 const Dashboard = () => {
@@ -39,208 +32,205 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   // ESTADOS DE DATOS
-  const [productList, setProductList] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [productList, setProductList] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // BUSCADORES INDEPENDIENTES
+  const [searchTerm, setSearchTerm] = useState(""); // Para Productos/Categorías
+  const [orderSearchTerm, setOrderSearchTerm] = useState(""); // <--- NUEVO: Solo para Pedidos
 
-  // ESTADO DEL BUSCADOR
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // ESTADOS DE UI
+  // ESTADOS UI
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  
-  // ESTADO DE ALERTA DE CONFLICTO (Para categoría con productos)
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [conflictProducts, setConflictProducts] = useState<string[]>([]);
   
   // EDICIÓN
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  
   const [uploadingImg, setUploadingImg] = useState(false);
-
-  // FORMULARIOS
-  const [productForm, setProductForm] = useState({
-    name: "", description: "", price: "", ingredients: "", categoryId: "", image: ""
-  });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
   const [categoryFormName, setCategoryFormName] = useState("");
 
-  // CARGA INICIAL
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
-      const [prodRes, catRes] = await Promise.all([
+      const [prodRes, catRes, orderRes] = await Promise.all([
         axios.get("http://localhost:3000/api/products"),
-        axios.get("http://localhost:3000/api/categories")
+        axios.get("http://localhost:3000/api/categories"),
+        axios.get("http://localhost:3000/api/orders")
       ]);
       setProductList(prodRes.data);
       setCategories(catRes.data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+      setOrders(orderRes.data);
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); }
   };
 
-  // --- LÓGICA DEL BUSCADOR ---
-  // Filtramos la lista original basándonos en lo que escribe el usuario
-  const filteredProducts = productList.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  // --- LÓGICA DE FILTRADO ---
+  // 1. Filtro Productos (Usa el buscador del Header)
+  const filteredProducts = productList.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  
+  // 2. Filtro Categorías (Usa el buscador del Header)
+  const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  // 3. Filtro Pedidos (Usa su PROPIO buscador)
+  const filteredOrders = orders.filter(o => 
+    String(o.id).includes(orderSearchTerm) || // Busca por ID
+    o.customer.toLowerCase().includes(orderSearchTerm.toLowerCase()) // O por nombre cliente
   );
 
-  const filteredCategories = categories.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // --- ACCIONES PRODUCTOS ---
-  const handleDeleteProduct = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este plato?")) return;
-    try {
-      await axios.delete(`http://localhost:3000/api/products/${id}`);
-      setProductList(productList.filter(p => p.id !== id));
-      toast({ title: "Eliminado", description: "El producto se ha borrado." });
-    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
-  };
-
-  const handleEditProductClick = (product: Product) => {
-    setEditingProduct(product);
-    setProductForm({
-      name: product.name,
-      description: product.description || "",
-      price: String(product.price),
-      ingredients: product.ingredients || "",
-      categoryId: String(product.categoryId),
-      image: product.image || ""
-    });
-    setIsProductDialogOpen(true);
+  // --- HANDLERS (Igual que antes) ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true);
+      const formData = new FormData(); formData.append("file", file); formData.append("upload_preset", CLOUDINARY_PRESET);
+      try { const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, formData);
+      setProductForm({ ...productForm, image: res.data.secure_url }); } 
+      catch (e) { toast({ title: "Error", variant: "destructive" }); } finally { setUploadingImg(false); }
   };
 
   const handleSaveProduct = async () => {
-    if (!productForm.name || !productForm.price || !productForm.categoryId) {
-        toast({ title: "Faltan datos", variant: "destructive" }); return;
-    }
+    if (!productForm.name || !productForm.price || !productForm.categoryId) return toast({title:"Faltan datos", variant:"destructive"});
     try {
       if (editingProduct) {
-        const res = await axios.put(`http://localhost:3000/api/products/${editingProduct.id}`, {
-            ...productForm,
-            isAvailable: editingProduct.isAvailable,
-            isDailySpecial: editingProduct.isDailySpecial
-        });
+        const res = await axios.put(`http://localhost:3000/api/products/${editingProduct.id}`, { ...productForm, isAvailable: editingProduct.isAvailable, isDailySpecial: editingProduct.isDailySpecial });
         setProductList(productList.map(p => p.id === editingProduct.id ? res.data : p));
-        toast({ title: "Actualizado", description: "Producto modificado correctamente" });
       } else {
         const res = await axios.post("http://localhost:3000/api/products", productForm);
         setProductList([res.data, ...productList]);
-        toast({ title: "Creado", description: "Nuevo plato agregado" });
       }
-      setIsProductDialogOpen(false);
-      setEditingProduct(null);
-      setProductForm({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
-    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
+      setIsProductDialogOpen(false); setEditingProduct(null); setProductForm({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
+      toast({title:"Guardado"});
+    } catch (e) { toast({title:"Error", variant:"destructive"}); }
   };
 
-  // --- ACCIONES CATEGORÍAS (CON PROTECCIÓN) ---
-  const handleDeleteCategory = async (id: number) => {
-    // Primer aviso simple
-    if (!confirm("¿Intentar eliminar categoría?")) return;
-    
-    try {
-      await axios.delete(`http://localhost:3000/api/categories/${id}`);
-      // Si pasa (no hay error), la borramos del estado
-      setCategories(categories.filter(c => c.id !== id));
-      toast({ title: "Eliminada", description: "Categoría borrada correctamente." });
-    } catch (error: any) {
-      // AQUÍ CAPTURAMOS EL BLOQUEO DEL BACKEND
-      if (error.response && error.response.status === 409) {
-        // Guardamos los productos conflictivos y abrimos el modal
-        setConflictProducts(error.response.data.products);
-        setIsConflictDialogOpen(true);
-      } else {
-        toast({ title: "Error", description: "No se pudo eliminar", variant: "destructive" });
-      }
-    }
+  const handleDeleteProduct = async (id: number) => {
+    if(!confirm("¿Eliminar plato?")) return;
+    try { await axios.delete(`http://localhost:3000/api/products/${id}`); setProductList(productList.filter(p=>p.id!==id)); } catch(e){ toast({title:"Error", variant:"destructive"}); }
   };
 
-  const handleEditCategoryClick = (category: Category) => {
-    setEditingCategory(category);
-    setCategoryFormName(category.name);
-    setIsCategoryDialogOpen(true);
-  }
-
-  const handleSaveCategory = async () => {
-    if (!categoryFormName.trim()) return;
-    try {
-        if (editingCategory) {
-            const res = await axios.put(`http://localhost:3000/api/categories/${editingCategory.id}`, { name: categoryFormName });
-            setCategories(categories.map(c => c.id === editingCategory.id ? res.data : c));
-            toast({ title: "Actualizada" });
-        } else {
-            const res = await axios.post("http://localhost:3000/api/categories", { name: categoryFormName });
-            setCategories([...categories, res.data]);
-            toast({ title: "Creada" });
-        }
-        setIsCategoryDialogOpen(false);
-        setEditingCategory(null);
-        setCategoryFormName("");
-    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true);
-    const formData = new FormData(); formData.append("file", file); formData.append("upload_preset", CLOUDINARY_PRESET);
-    try {
-      const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, formData);
-      setProductForm({ ...productForm, image: res.data.secure_url });
-    } catch (error) { toast({ title: "Error subiendo imagen", variant: "destructive" }); } 
-    finally { setUploadingImg(false); }
-  };
-
-  const handleToggle = async (id: number, field: 'isAvailable' | 'isDailySpecial', val: boolean) => {
+  const handleToggle = async (id: number, field: string, val: boolean) => {
     setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: !val } : p));
     try { await axios.patch(`http://localhost:3000/api/products/${id}`, { [field]: !val }); } 
     catch (e) { setProductList(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p)); }
   };
 
-  const handleLogout = () => { localStorage.removeItem("authToken"); navigate("/login"); };
+  const handleSaveCategory = async () => {
+    if(!categoryFormName) return;
+    try {
+        if(editingCategory) {
+            const res = await axios.put(`http://localhost:3000/api/categories/${editingCategory.id}`, {name:categoryFormName});
+            setCategories(categories.map(c=>c.id===editingCategory.id?res.data:c));
+        } else {
+            const res = await axios.post("http://localhost:3000/api/categories", {name:categoryFormName});
+            setCategories([...categories, res.data]);
+        }
+        setIsCategoryDialogOpen(false); setEditingCategory(null); setCategoryFormName("");
+        toast({title:"Guardado"});
+    } catch(e) { toast({title:"Error", variant:"destructive"}); }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if(!confirm("¿Eliminar?")) return;
+    try {
+      await axios.delete(`http://localhost:3000/api/categories/${id}`);
+      setCategories(categories.filter(c=>c.id!==id));
+    } catch (error: any) {
+      if (error.response && error.response.status === 409) {
+        setConflictProducts(error.response.data.products);
+        setIsConflictDialogOpen(true);
+      } else { toast({title:"Error", variant:"destructive"}); }
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background relative pb-20">
+    <div className="min-h-screen bg-background pb-20">
+      {/* HEADER (Buscador General - Solo Productos/Categorías) */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-            <ChefHat className="text-primary" />
-            <span className="font-bold hidden md:inline">Admin Panel</span>
-        </div>
+        <div className="flex items-center gap-2"><ChefHat className="text-primary"/><span className="font-bold hidden md:inline">Admin Panel</span></div>
         
-        {/* BUSCADOR EN EL HEADER */}
-        <div className="flex-1 max-w-md mx-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-                placeholder="Buscar platos o categorías..." 
-                className="pl-9 bg-secondary/50 border-transparent focus:bg-background transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Este buscador ahora solo afecta a las pestañas de Platos y Categorías */}
+        <div className="flex-1 max-w-xs mx-4 relative">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+             <Input 
+                placeholder="Buscar platos..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                className="pl-9 bg-secondary/50"
+             />
         </div>
 
-        <Button variant="ghost" size="icon" onClick={handleLogout}><LogOut className="w-5 h-5" /></Button>
+        <Button variant="ghost" onClick={() => { localStorage.removeItem("authToken"); navigate("/login"); }}><LogOut className="w-5 h-5"/></Button>
       </header>
 
       <main className="container px-4 py-6 max-w-5xl mx-auto">
-        <Tabs defaultValue="products">
-            <TabsList className="mb-4 w-full md:w-auto">
-                <TabsTrigger value="products" className="flex-1 md:flex-none">Platos ({filteredProducts.length})</TabsTrigger>
-                <TabsTrigger value="categories" className="flex-1 md:flex-none">Categorías ({filteredCategories.length})</TabsTrigger>
+        <Tabs defaultValue="orders">
+            <TabsList className="mb-6 w-full md:w-auto grid grid-cols-3 md:flex">
+                <TabsTrigger value="orders" className="gap-2"><Receipt className="w-4 h-4"/> Pedidos</TabsTrigger>
+                <TabsTrigger value="products">Platos</TabsTrigger>
+                <TabsTrigger value="categories">Categorías</TabsTrigger>
             </TabsList>
 
-            {/* --- LISTA FILTRADA DE PRODUCTOS --- */}
+            {/* --- PESTAÑA PEDIDOS (Con su buscador propio) --- */}
+            <TabsContent value="orders" className="space-y-4">
+               {/* BUSCADOR DE PEDIDOS INDEPENDIENTE */}
+               <div className="flex gap-2 mb-4 bg-white p-3 rounded-lg border shadow-sm items-center">
+                  <Search className="h-5 w-5 text-slate-400" />
+                  <Input 
+                    placeholder="Buscar por ID (ej: 12) o Cliente..." 
+                    value={orderSearchTerm}
+                    onChange={(e) => setOrderSearchTerm(e.target.value)}
+                    className="border-0 focus-visible:ring-0 text-lg"
+                  />
+               </div>
+
+               {filteredOrders.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron pedidos</p>}
+               
+               {filteredOrders.map((order) => (
+                 <div key={order.id} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3 border-b pb-3 border-dashed">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold font-mono">ID #{order.id}</span>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> {new Date(order.createdAt).toLocaleString()}</span>
+                            </div>
+                            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                <User className="w-4 h-4 text-slate-500"/> {order.customer}
+                            </h3>
+                        </div>
+                        <div className="text-right">
+                             <span className={`text-xs font-bold px-3 py-1 rounded-full ${order.type === 'DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {order.type}
+                             </span>
+                             {order.type === 'DELIVERY' && (
+                                <p className="text-xs mt-1 text-slate-600 font-medium max-w-[200px] text-right ml-auto flex items-center justify-end gap-1">
+                                    <MapPin className="w-3 h-3"/> {order.address}
+                                </p>
+                             )}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 whitespace-pre-line mb-3 border border-slate-100 font-mono">
+                        {order.details}
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-slate-500">Total Comida:</span>
+                        <span className="text-xl font-bold text-green-600">${order.total}</span>
+                    </div>
+                 </div>
+               ))}
+            </TabsContent>
+
+            {/* --- PESTAÑA PLATOS --- */}
             <TabsContent value="products" className="space-y-4">
-                {filteredProducts.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron productos</p>}
-                
                 {filteredProducts.map((p) => (
-                    <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white transition-opacity ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
+                    <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
                         <img src={p.image || ""} className="w-16 h-16 rounded-lg bg-slate-200 object-cover border" />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -249,7 +239,6 @@ const Dashboard = () => {
                             </div>
                             <div className="text-xs text-muted-foreground">${p.price}</div>
                         </div>
-                        
                         <div className="flex flex-col gap-2 items-end mr-4">
                             <div className="flex items-center gap-2">
                                 <span className={`text-[10px] font-bold ${p.isAvailable ? 'text-green-600' : 'text-slate-400'}`}>{p.isAvailable ? "En Venta" : "Agotado"}</span>
@@ -260,27 +249,22 @@ const Dashboard = () => {
                                 <Switch checked={p.isDailySpecial} onCheckedChange={() => handleToggle(p.id, 'isDailySpecial', p.isDailySpecial)} className="data-[state=checked]:bg-amber-400"/>
                             </div>
                         </div>
-
                         <div className="flex flex-col gap-2 border-l pl-4">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleEditProductClick(p)}><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setIsProductDialogOpen(true); setProductForm({ name: p.name, description: p.description||"", price: String(p.price), ingredients: p.ingredients||"", categoryId: String(p.categoryId), image: p.image||"" }); }}><Pencil className="w-4 h-4 text-blue-600" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
                         </div>
                     </div>
                 ))}
             </TabsContent>
 
-            {/* --- LISTA FILTRADA DE CATEGORÍAS --- */}
+            {/* --- PESTAÑA CATEGORÍAS --- */}
             <TabsContent value="categories" className="space-y-2">
-                {filteredCategories.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron categorías</p>}
-
                 {filteredCategories.map((c) => (
-                    <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between hover:shadow-sm transition-shadow">
-                        <span className="font-medium flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-slate-400"/> {c.name}
-                        </span>
+                    <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between">
+                        <span className="font-medium flex items-center gap-2"><Tag className="w-4 h-4 text-slate-400"/> {c.name}</span>
                         <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCategoryClick(c)} className="hover:bg-blue-50 text-blue-600"><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(c.id)} className="hover:bg-red-50 text-red-600"><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(c); setCategoryFormName(c.name); setIsCategoryDialogOpen(true); }}><Pencil className="w-4 h-4 text-blue-600" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(c.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
                         </div>
                     </div>
                 ))}
@@ -307,57 +291,20 @@ const Dashboard = () => {
         <Button onClick={() => setIsFabOpen(!isFabOpen)} className={`h-14 w-14 rounded-full shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary hover:scale-105'}`}><Plus/></Button>
       </div>
 
-      {/* --- DIALOGO DE ERROR: CATEGORÍA CON PRODUCTOS --- */}
-      <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
-        <DialogContent className="border-l-4 border-l-red-500">
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-red-600">
-                    <AlertTriangle className="h-5 w-5"/> No se puede eliminar
-                </DialogTitle>
-                <DialogDescription className="pt-2">
-                    Esta categoría contiene <b>{conflictProducts.length} productos</b>. Debes eliminarlos o cambiarlos de categoría antes de borrarla.
-                </DialogDescription>
-            </DialogHeader>
-            
-            <div className="bg-slate-50 p-3 rounded-md max-h-40 overflow-y-auto border text-sm">
-                <p className="font-semibold mb-2 text-slate-700">Productos en conflicto:</p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                    {conflictProducts.map((name, i) => (
-                        <li key={i}>{name}</li>
-                    ))}
-                </ul>
-            </div>
-
-            <DialogFooter>
-                <Button onClick={() => setIsConflictDialogOpen(false)}>Entendido</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* --- DIALOGO PRODUCTO --- */}
+      {/* DIALOGOS (PRODUCTO, CATEGORÍA, ERROR) */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingProduct ? "Editar Plato" : "Nuevo Plato"}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-4">
                 <div className="space-y-2">
                     <Label>Foto</Label>
-                    <div className="flex gap-2 items-center">
-                        <Input type="file" onChange={handleImageUpload} className="text-xs"/>
-                        {uploadingImg && <Loader2 className="animate-spin text-primary" />}
-                    </div>
+                    <div className="flex gap-2 items-center"><Input type="file" onChange={handleImageUpload} className="text-xs"/>{uploadingImg && <Loader2 className="animate-spin text-primary" />}</div>
                     {productForm.image && <img src={productForm.image} className="h-32 w-full object-cover rounded-lg border" />}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Nombre</Label>
-                        <Input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Precio</Label>
-                        <Input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
-                    </div>
+                    <div className="space-y-2"><Label>Nombre</Label><Input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Precio</Label><Input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} /></div>
                 </div>
-                
                 <div className="space-y-2">
                     <Label>Categoría</Label>
                     <Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}>
@@ -365,30 +312,26 @@ const Dashboard = () => {
                         <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
-
-                <div className="space-y-2">
-                    <Label>Ingredientes</Label>
-                    <Input placeholder="Ej: Tomate, Queso, Albahaca" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} />
-                </div>
-                
-                <div className="space-y-2">
-                    <Label>Descripción</Label>
-                    <Textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
-                </div>
+                <div className="space-y-2"><Label>Ingredientes</Label><Input placeholder="Ej: Tomate, Queso" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Descripción</Label><Textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} /></div>
                 <Button onClick={handleSaveProduct} className="w-full" disabled={uploadingImg}>{editingProduct ? "Guardar Cambios" : "Crear Plato"}</Button>
             </div>
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOGO CATEGORÍA --- */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent>
             <DialogHeader><DialogTitle>{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle></DialogHeader>
-            <div className="py-4">
-                <Label>Nombre</Label>
-                <Input className="mt-2" value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} placeholder="Ej: Bebidas, Postres..." />
-            </div>
-            <Button onClick={handleSaveCategory} className="w-full">{editingCategory ? "Guardar" : "Crear"}</Button>
+            <Input value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} placeholder="Nombre" />
+            <Button onClick={handleSaveCategory} className="w-full mt-4">Guardar</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
+        <DialogContent className="border-l-4 border-l-red-500">
+            <DialogHeader><DialogTitle className="text-red-600 flex gap-2"><AlertTriangle/> No se puede eliminar</DialogTitle><DialogDescription>Tiene productos dentro.</DialogDescription></DialogHeader>
+            <ul className="list-disc pl-5 text-sm bg-slate-50 p-2 rounded max-h-32 overflow-y-auto">{conflictProducts.map((p,i)=><li key={i}>{p}</li>)}</ul>
+            <Button onClick={()=>setIsConflictDialogOpen(false)}>Entendido</Button>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,87 +1,95 @@
-// client/src/features/menu/components/ProductModal.tsx
+import { X, Info, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
-import { Product } from "@/features/menu/data/menuData";
+import { Product } from "../data/menuData";
+import { Button } from "@/components/ui/button";
 
 interface ProductModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
+  onAddToCart: (product: Product) => void;
 }
 
-const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
+const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalProps) => {
   if (!product) return null;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/60 backdrop-blur-[2px]" // Fondo un poco más oscuro
-          onClick={onClose}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          {/* 1. Fondo Oscuro (Cierra al hacer click) */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          />
+
+          {/* 2. La Ventana del Modal (Siempre Centrada) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative bg-background w-full max-w-md max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10"
           >
             {/* Imagen Header */}
-            <div className="relative h-64 w-full">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover"
+            <div className="relative h-56 flex-shrink-0">
+              <img 
+                src={product.image} 
+                alt={product.name} 
+                className="w-full h-full object-cover" 
               />
-              {/* Botón Cerrar flotante */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-sm hover:bg-white transition-all"
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+              
+              {/* Botón Cerrar Flotante */}
+              <button 
+                onClick={onClose} 
+                className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
+
+              <div className="absolute bottom-4 left-5 right-5 text-white">
+                <h2 className="text-2xl font-bold leading-tight">{product.name}</h2>
+                <p className="opacity-90 font-medium text-lg mt-1">${product.price}</p>
+              </div>
             </div>
 
-            {/* Contenido Limpio */}
-            <div className="p-6 pt-8"> {/* Padding ajustado */}
-              <div className="flex items-start justify-between mb-3">
-                <h2 className="font-serif text-2xl font-bold text-slate-900 leading-tight">
-                  {product.name}
-                </h2>
-                <p className="font-bold text-xl text-amber-600 shrink-0 ml-4">
-                  €{product.price.toFixed(2)}
-                </p>
-              </div>
-
-              <p className="text-slate-600 mb-8 leading-relaxed text-sm font-light">
-                {product.fullDescription}
+            {/* Contenido Scrollable */}
+            <div className="p-6 overflow-y-auto flex-1 scrollbar-hide">
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                {product.fullDescription || product.description}
               </p>
 
-              {/* Ingredientes Estilo Etiqueta Simple */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Ingredientes
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {product.ingredients.map((ingredient, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-md border border-slate-200"
-                    >
-                      {ingredient}
-                    </span>
-                  ))}
+              {product.ingredients && product.ingredients.length > 0 && (
+                <div className="mt-5">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Info className="w-3 h-3" /> Ingredientes
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {product.ingredients.map((ing, i) => (
+                      <span key={i} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium">
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+            </div>
 
-              <div className="h-8" />
+            {/* Footer con Botón de Acción */}
+            <div className="p-4 border-t bg-white">
+              <Button 
+                onClick={() => onAddToCart(product)}
+                className="w-full h-12 text-base bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 shadow-lg"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Agregar al Pedido
+              </Button>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
