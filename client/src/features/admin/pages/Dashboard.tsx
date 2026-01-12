@@ -17,8 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const CLOUDINARY_CLOUD_NAME = "TU_CLOUD_NAME"; 
-const CLOUDINARY_PRESET = "TU_UPLOAD_PRESET"; 
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME; 
+const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_PRESET;
 
 interface Order {
     id: number;

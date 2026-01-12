@@ -11,7 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
 // ⚠️ PON TU NÚMERO AQUÍ (Sin espacios, sin +)
-const RESTAURANT_PHONE = "5492657249135"; 
+// Leemos la variable de entorno
+const RESTAURANT_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || "5490000000000";
 
 export const CartSidebar = () => {
   const { items, removeFromCart, updateQuantity, total, count, clearCart } = useCart();
