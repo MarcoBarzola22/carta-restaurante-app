@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Product } from "@/features/menu/data/menuData";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProductModalProps {
   product: Product | null;
@@ -53,7 +54,7 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
                   {product.name}
                 </h2>
                 <p className="font-bold text-xl text-amber-600 shrink-0 ml-4">
-                  €{product.price.toFixed(2)}
+                    {formatCurrency(product.price)}
                 </p>
               </div>
 

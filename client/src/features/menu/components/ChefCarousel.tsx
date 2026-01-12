@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/features/menu/data/menuData"; // Quitamos getChefRecommendations
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 // MODIFICACIÓN 1: La interfaz ahora acepta 'products'
 interface ChefCarouselProps {
@@ -166,9 +167,11 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60" />
                     
                     {isCenter && (
-                       <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full shadow-lg border border-slate-100">
-                         <span className="font-bold text-slate-900 text-sm">€{product.price.toFixed(2)}</span>
-                       </div>
+                      <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full shadow-lg border border-slate-100">
+                        <span className="font-bold text-slate-900 text-sm">
+                          {formatCurrency(product.price)}
+                        </span>
+                      </div>
                     )}
                   </div>
                   
