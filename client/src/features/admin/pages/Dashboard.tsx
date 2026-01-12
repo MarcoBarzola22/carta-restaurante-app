@@ -5,17 +5,18 @@ import axios from "axios";
 // IMPORTACIONES UNIFICADAS (Sin duplicados)
 import { 
   ChefHat, Plus, LogOut, Loader2, Star, Utensils, Tag, Pencil, 
-  Trash2, Search, AlertTriangle, Receipt, Clock, User, MapPin 
+  Trash2, Search, AlertTriangle, Receipt, Clock, User, MapPin, QrCode, Download 
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QRCode from "react-qr-code";
 
 const CLOUDINARY_CLOUD_NAME = "TU_CLOUD_NAME"; 
 const CLOUDINARY_PRESET = "TU_UPLOAD_PRESET"; 
@@ -57,7 +58,27 @@ const Dashboard = () => {
   const [productForm, setProductForm] = useState({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
   const [categoryFormName, setCategoryFormName] = useState("");
 
+  const [isQRDialogOpen, setIsQRDialogOpen] = useState(false); // <--- NUEVO ESTADO
+
   useEffect(() => { fetchData(); }, []);
+
+
+  // --- FUNCIÓN PARA DESCARGAR EL QR ---
+const handleDownloadQR = () => {
+  const svg = document.getElementById("QRCode");
+  if (!svg) return;
+  
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "mi-carta-qr.svg"; // Se descarga como SVG (Vectorial, alta calidad)
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const fetchData = async () => {
     try {
@@ -153,12 +174,60 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background pb-20 relative">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2"><ChefHat className="text-primary"/><span className="font-bold hidden md:inline">Admin Panel</span></div>
-        <div className="flex-1 max-w-xs mx-4 relative">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-             <Input placeholder="Buscar platos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 bg-secondary/50"/>
+        {/* Lado Izquierdo: Logo */}
+        <div className="flex items-center gap-2">
+            <ChefHat className="text-primary w-6 h-6" />
+            <span className="font-bold hidden md:inline">Admin Panel</span>
         </div>
-        <Button variant="ghost" onClick={handleLogout}><LogOut className="w-5 h-5"/></Button>
+        
+        {/* Centro: Buscador */}
+        <div className="flex-1 max-w-md mx-4 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar platos o categorías..." 
+                className="pl-9 bg-secondary/50 border-transparent focus:bg-background transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+
+        {/* Lado Derecho: Botones */}
+        <div className="flex items-center gap-1 md:gap-2">
+            
+            {/* BOTÓN QR (Ahora en ROJO, igual que Salir) */}
+            <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsQRDialogOpen(true)}
+                className="hidden sm:flex gap-2 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors font-medium"
+            >
+                <QrCode className="w-4 h-4" />
+                <span>Código QR</span>
+            </Button>
+
+            {/* Botón QR Móvil (Solo ícono, también ROJO al hover) */}
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsQRDialogOpen(true)}
+                className="sm:hidden text-slate-500 hover:text-red-600 hover:bg-red-50"
+            >
+                <QrCode className="w-5 h-5" />
+            </Button>
+
+            {/* Separador */}
+            <div className="h-6 w-px bg-slate-200 mx-1" />
+
+            {/* Botón Salir */}
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleLogout}
+                className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+            >
+                <LogOut className="w-5 h-5" />
+            </Button>
+        </div>
       </header>
 
       {/* CONTENIDO */}
@@ -272,6 +341,42 @@ const Dashboard = () => {
       <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
         <DialogContent className="border-l-4 border-l-red-500"><DialogHeader><DialogTitle className="text-red-600 flex gap-2"><AlertTriangle/> No se puede eliminar</DialogTitle><DialogDescription>Tiene productos dentro.</DialogDescription></DialogHeader><ul className="list-disc pl-5 text-sm bg-slate-50 p-2 rounded max-h-32 overflow-y-auto">{conflictProducts.map((p,i)=><li key={i}>{p}</li>)}</ul><Button onClick={()=>setIsConflictDialogOpen(false)}>Entendido</Button></DialogContent>
       </Dialog>
+
+                {/* --- DIALOGO CÓDIGO QR --- */}
+      <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
+      <DialogContent className="sm:max-w-md flex flex-col items-center">
+          <DialogHeader className="text-center">
+              <DialogTitle className="text-xl">Menú Digital</DialogTitle>
+              <DialogDescription>
+                  Escanea o imprime este código para tus mesas.
+              </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-6 bg-white rounded-xl shadow-sm border my-4 flex flex-col items-center gap-4">
+              {/* El componente QR */}
+              <div className="bg-white p-2">
+                  <QRCode
+                      id="QRCode"
+                      value={window.location.origin} // Toma la URL actual automáticamente
+                      size={200}
+                      level="H" // Nivel de corrección alto (se ve mejor)
+                      className="h-auto max-w-full"
+                  />
+              </div>
+              <p className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-1 rounded">
+                  {window.location.origin}
+              </p>
+          </div>
+
+          <DialogFooter className="w-full sm:justify-center">
+              <Button onClick={handleDownloadQR} className="w-full sm:w-auto gap-2 bg-slate-900 hover:bg-slate-800">
+                  <Download className="w-4 h-4" /> Descargar Imagen QR
+              </Button>
+          </DialogFooter>
+      </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 };

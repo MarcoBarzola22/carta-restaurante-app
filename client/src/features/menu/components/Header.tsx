@@ -1,5 +1,6 @@
 // client/src/features/menu/components/Header.tsx
 import { ChefHat } from "lucide-react";
+import imagenPortada from "@/assets/fondoHeader.jpg"
 
 const Header = () => {
   return (
@@ -7,8 +8,10 @@ const Header = () => {
       {/* 1. Imagen de Fondo con Efecto Blur */}
       {/* NOTA: Cambia la URL por una foto real de tu restaurante más adelante */}
       <div 
-        className="absolute inset-0 bg-cover bg-center blur-[2px] brightness-50 transform scale-105"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop')" }} 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-[2px] brightness-50 transform scale-105"
+        style={{ 
+          backgroundImage: `url(${imagenPortada})` 
+        }} 
       />
       
       {/* 2. Contenido Sobrepuesto (Logo y Texto) */}
