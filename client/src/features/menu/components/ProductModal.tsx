@@ -2,9 +2,6 @@ import { X, Info, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "../data/menuData";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { Product } from "@/features/menu/data/menuData";
-import { formatCurrency } from "@/lib/utils";
 
 interface ProductModalProps {
   product: Product | null;
@@ -14,13 +11,14 @@ interface ProductModalProps {
 }
 
 const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalProps) => {
+  // Si no hay producto, no renderizamos nada
   if (!product) return null;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          {/* 1. Fondo Oscuro (Cierra al hacer click) */}
+          {/* Fondo Oscuro */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -29,14 +27,14 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           />
 
-          {/* 2. La Ventana del Modal (Siempre Centrada) */}
+          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative bg-background w-full max-w-md max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10"
           >
-            {/* Imagen Header */}
+            {/* Header Imagen */}
             <div className="relative h-56 flex-shrink-0">
               <img 
                 src={product.image} 
@@ -45,7 +43,6 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               
-              {/* Botón Cerrar Flotante */}
               <button 
                 onClick={onClose} 
                 className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors"
@@ -59,26 +56,10 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
               </div>
             </div>
 
-<<<<<<< HEAD
-            {/* Contenido Scrollable */}
+            {/* Contenido */}
             <div className="p-6 overflow-y-auto flex-1 scrollbar-hide">
               <p className="text-muted-foreground leading-relaxed text-sm">
                 {product.fullDescription || product.description}
-=======
-            {/* Contenido Limpio */}
-            <div className="p-6 pt-8"> {/* Padding ajustado */}
-              <div className="flex items-start justify-between mb-3">
-                <h2 className="font-serif text-2xl font-bold text-slate-900 leading-tight">
-                  {product.name}
-                </h2>
-                <p className="font-bold text-xl text-amber-600 shrink-0 ml-4">
-                    {formatCurrency(product.price)}
-                </p>
-              </div>
-
-              <p className="text-slate-600 mb-8 leading-relaxed text-sm font-light">
-                {product.fullDescription}
->>>>>>> origin/main
               </p>
 
               {product.ingredients && product.ingredients.length > 0 && (
@@ -97,7 +78,7 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
               )}
             </div>
 
-            {/* Footer con Botón de Acción */}
+            {/* Footer Botón */}
             <div className="p-4 border-t bg-white">
               <Button 
                 onClick={() => onAddToCart(product)}

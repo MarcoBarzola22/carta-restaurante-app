@@ -2,20 +2,21 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { ChefHat, Plus, LogOut, Loader2, Star, Utensils, Tag, Pencil, Trash2, Search, AlertTriangle, Receipt, Clock, MapPin, User } from "lucide-react";
-import { ChefHat, Plus, LogOut, Loader2, Image as ImageIcon, Star, Utensils, Tag, Pencil, Trash2, Search, AlertTriangle, QrCode, Download } from "lucide-react";
+// IMPORTACIONES UNIFICADAS (Sin duplicados)
+import { 
+  ChefHat, Plus, LogOut, Loader2, Star, Utensils, Tag, Pencil, 
+  Trash2, Search, AlertTriangle, Receipt, Clock, User, MapPin 
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import QRCode from "react-qr-code";
 
-// DATOS CLOUDINARY
 const CLOUDINARY_CLOUD_NAME = "TU_CLOUD_NAME"; 
 const CLOUDINARY_PRESET = "TU_UPLOAD_PRESET"; 
 
@@ -33,15 +34,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // ESTADOS DE DATOS
   const [productList, setProductList] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // BUSCADORES INDEPENDIENTES
-  const [searchTerm, setSearchTerm] = useState(""); // Para Productos/Categorías
-  const [orderSearchTerm, setOrderSearchTerm] = useState(""); // <--- NUEVO: Solo para Pedidos
+  // BUSCADORES
+  const [searchTerm, setSearchTerm] = useState("");
+  const [orderSearchTerm, setOrderSearchTerm] = useState("");
 
   // ESTADOS UI
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -50,7 +50,6 @@ const Dashboard = () => {
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [conflictProducts, setConflictProducts] = useState<string[]>([]);
   
-  // EDICIÓN
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
   
@@ -58,12 +57,6 @@ const Dashboard = () => {
   const [productForm, setProductForm] = useState({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
   const [categoryFormName, setCategoryFormName] = useState("");
 
-<<<<<<< HEAD
-=======
-  const [isQRDialogOpen, setIsQRDialogOpen] = useState(false); // <--- NUEVO ESTADO
-
-  // CARGA INICIAL
->>>>>>> origin/main
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
@@ -80,71 +73,12 @@ const Dashboard = () => {
     finally { setLoading(false); }
   };
 
-  // --- LÓGICA DE FILTRADO ---
-  // 1. Filtro Productos (Usa el buscador del Header)
-  const filteredProducts = productList.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  
-  // 2. Filtro Categorías (Usa el buscador del Header)
-  const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  // 3. Filtro Pedidos (Usa su PROPIO buscador)
-  const filteredOrders = orders.filter(o => 
-    String(o.id).includes(orderSearchTerm) || // Busca por ID
-    o.customer.toLowerCase().includes(orderSearchTerm.toLowerCase()) // O por nombre cliente
-  );
-
-<<<<<<< HEAD
-  // --- HANDLERS (Igual que antes) ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true);
       const formData = new FormData(); formData.append("file", file); formData.append("upload_preset", CLOUDINARY_PRESET);
       try { const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, formData);
       setProductForm({ ...productForm, image: res.data.secure_url }); } 
       catch (e) { toast({ title: "Error", variant: "destructive" }); } finally { setUploadingImg(false); }
-=======
-  const filteredCategories = categories.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // --- FUNCIÓN PARA DESCARGAR EL QR ---
-  const handleDownloadQR = () => {
-    const svg = document.getElementById("QRCode");
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "mi-carta-qr.svg"; // Se descarga como SVG (Vectorial, alta calidad)
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // --- ACCIONES PRODUCTOS ---
-  const handleDeleteProduct = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este plato?")) return;
-    try {
-      await axios.delete(`http://localhost:3000/api/products/${id}`);
-      setProductList(productList.filter(p => p.id !== id));
-      toast({ title: "Eliminado", description: "El producto se ha borrado." });
-    } catch (e) { toast({ title: "Error", variant: "destructive" }); }
-  };
-
-  const handleEditProductClick = (product: Product) => {
-    setEditingProduct(product);
-    setProductForm({
-      name: product.name,
-      description: product.description || "",
-      price: String(product.price),
-      ingredients: product.ingredients || "",
-      categoryId: String(product.categoryId),
-      image: product.image || ""
-    });
-    setIsProductDialogOpen(true);
->>>>>>> origin/main
   };
 
   const handleSaveProduct = async () => {
@@ -201,82 +135,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    navigate("/login");
+  };
+
+  const filteredProducts = productList.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredOrders = orders.filter(o => 
+    String(o.id).includes(orderSearchTerm) || 
+    o.customer.toLowerCase().includes(orderSearchTerm.toLowerCase())
+  );
+
+  if (loading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin"/></div>;
+
   return (
-<<<<<<< HEAD
-    <div className="min-h-screen bg-background pb-20">
-      {/* HEADER (Buscador General - Solo Productos/Categorías) */}
+    <div className="min-h-screen bg-background pb-20 relative">
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2"><ChefHat className="text-primary"/><span className="font-bold hidden md:inline">Admin Panel</span></div>
-        
-        {/* Este buscador ahora solo afecta a las pestañas de Platos y Categorías */}
         <div className="flex-1 max-w-xs mx-4 relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-             <Input 
-                placeholder="Buscar platos..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                className="pl-9 bg-secondary/50"
-             />
+             <Input placeholder="Buscar platos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 bg-secondary/50"/>
         </div>
-
-        <Button variant="ghost" onClick={() => { localStorage.removeItem("authToken"); navigate("/login"); }}><LogOut className="w-5 h-5"/></Button>
-=======
-    <div className="min-h-screen bg-background relative pb-20">
-      {/* HEADER MEJORADO */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b px-4 h-16 flex items-center justify-between relative">
-        
-        {/* 1. Lado Izquierdo: Logo */}
-        <div className="flex items-center gap-2 relative z-10">
-            <ChefHat className="text-primary w-6 h-6" />
-            <span className="font-bold hidden md:inline text-lg tracking-tight">Admin Panel</span>
-        </div>
-        
-        {/* 2. Centro Perfecto: Buscador (Posición Absoluta) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4 hidden md:block">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                    placeholder="Buscar platos o categorías..." 
-                    className="pl-10 bg-slate-100/50 border-slate-200 focus:bg-white focus:border-primary/50 transition-all rounded-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-        </div>
-
-        {/* 3. Lado Derecho: Botones */}
-        <div className="flex items-center gap-2 relative z-10">
-            {/* BOTÓN QR CON TEXTO */}
-            <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setIsQRDialogOpen(true)} 
-                className="gap-2 hidden sm:flex border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
-                title="Ver Código QR"
-            >
-                <QrCode className="w-4 h-4" />
-                <span>Código QR</span>
-            </Button>
-            
-            {/* Botón QR (Solo ícono para móvil) */}
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsQRDialogOpen(true)} 
-                className="sm:hidden text-slate-600"
-            >
-                <QrCode className="w-5 h-5" />
-            </Button>
-
-            <div className="h-6 w-px bg-slate-200 mx-1" /> {/* Separador visual */}
-
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-slate-500 hover:text-red-600 hover:bg-red-50">
-                <LogOut className="w-5 h-5" />
-            </Button>
-        </div>
->>>>>>> origin/main
+        <Button variant="ghost" onClick={handleLogout}><LogOut className="w-5 h-5"/></Button>
       </header>
 
+      {/* CONTENIDO */}
       <main className="container px-4 py-6 max-w-5xl mx-auto">
         <Tabs defaultValue="orders">
             <TabsList className="mb-6 w-full md:w-auto grid grid-cols-3 md:flex">
@@ -285,78 +170,44 @@ const Dashboard = () => {
                 <TabsTrigger value="categories">Categorías</TabsTrigger>
             </TabsList>
 
-            {/* --- PESTAÑA PEDIDOS (Con su buscador propio) --- */}
             <TabsContent value="orders" className="space-y-4">
-               {/* BUSCADOR DE PEDIDOS INDEPENDIENTE */}
                <div className="flex gap-2 mb-4 bg-white p-3 rounded-lg border shadow-sm items-center">
                   <Search className="h-5 w-5 text-slate-400" />
-                  <Input 
-                    placeholder="Buscar por ID (ej: 12) o Cliente..." 
-                    value={orderSearchTerm}
-                    onChange={(e) => setOrderSearchTerm(e.target.value)}
-                    className="border-0 focus-visible:ring-0 text-lg"
-                  />
+                  <Input placeholder="Buscar por ID o Cliente..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="border-0 focus-visible:ring-0 text-lg"/>
                </div>
-
-               {filteredOrders.length === 0 && <p className="text-center text-muted-foreground py-10">No se encontraron pedidos</p>}
-               
+               {filteredOrders.length === 0 && <p className="text-center text-muted-foreground py-10">No hay pedidos</p>}
                {filteredOrders.map((order) => (
-                 <div key={order.id} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                 <div key={order.id} className="bg-white border rounded-xl p-4 shadow-sm">
                     <div className="flex justify-between items-start mb-3 border-b pb-3 border-dashed">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold font-mono">ID #{order.id}</span>
                                 <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> {new Date(order.createdAt).toLocaleString()}</span>
                             </div>
-                            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                                <User className="w-4 h-4 text-slate-500"/> {order.customer}
-                            </h3>
+                            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2"><User className="w-4 h-4"/> {order.customer}</h3>
                         </div>
                         <div className="text-right">
-                             <span className={`text-xs font-bold px-3 py-1 rounded-full ${order.type === 'DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                                {order.type}
-                             </span>
-                             {order.type === 'DELIVERY' && (
-                                <p className="text-xs mt-1 text-slate-600 font-medium max-w-[200px] text-right ml-auto flex items-center justify-end gap-1">
-                                    <MapPin className="w-3 h-3"/> {order.address}
-                                </p>
-                             )}
+                             <span className={`text-xs font-bold px-3 py-1 rounded-full ${order.type === 'DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{order.type}</span>
+                             {order.type === 'DELIVERY' && <p className="text-xs mt-1 text-slate-600 flex items-center justify-end gap-1"><MapPin className="w-3 h-3"/> {order.address}</p>}
                         </div>
                     </div>
-                    
-                    <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 whitespace-pre-line mb-3 border border-slate-100 font-mono">
-                        {order.details}
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-slate-500">Total Comida:</span>
-                        <span className="text-xl font-bold text-green-600">${order.total}</span>
-                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 whitespace-pre-line mb-3 border font-mono">{order.details}</div>
+                    <div className="flex justify-between items-center"><span className="text-sm font-semibold text-slate-500">Total Comida:</span><span className="text-xl font-bold text-green-600">${order.total}</span></div>
                  </div>
                ))}
             </TabsContent>
 
-            {/* --- PESTAÑA PLATOS --- */}
             <TabsContent value="products" className="space-y-4">
                 {filteredProducts.map((p) => (
                     <div key={p.id} className={`p-4 rounded-xl border flex items-center gap-4 bg-white ${!p.isAvailable ? 'opacity-70 bg-slate-50' : ''}`}>
                         <img src={p.image || ""} className="w-16 h-16 rounded-lg bg-slate-200 object-cover border" />
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold truncate">{p.name}</span>
-                                {p.isDailySpecial && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
-                            </div>
+                            <div className="flex items-center gap-2"><span className="font-bold truncate">{p.name}</span>{p.isDailySpecial && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}</div>
                             <div className="text-xs text-muted-foreground">${p.price}</div>
                         </div>
                         <div className="flex flex-col gap-2 items-end mr-4">
-                            <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-bold ${p.isAvailable ? 'text-green-600' : 'text-slate-400'}`}>{p.isAvailable ? "En Venta" : "Agotado"}</span>
-                                <Switch checked={p.isAvailable} onCheckedChange={() => handleToggle(p.id, 'isAvailable', p.isAvailable)} />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-muted-foreground">Destacar</span>
-                                <Switch checked={p.isDailySpecial} onCheckedChange={() => handleToggle(p.id, 'isDailySpecial', p.isDailySpecial)} className="data-[state=checked]:bg-amber-400"/>
-                            </div>
+                            <div className="flex items-center gap-2"><span className={`text-[10px] font-bold ${p.isAvailable ? 'text-green-600' : 'text-slate-400'}`}>{p.isAvailable ? "En Venta" : "Agotado"}</span><Switch checked={p.isAvailable} onCheckedChange={() => handleToggle(p.id, 'isAvailable', p.isAvailable)} /></div>
+                            <div className="flex items-center gap-2"><span className="text-[10px] text-muted-foreground">Destacar</span><Switch checked={p.isDailySpecial} onCheckedChange={() => handleToggle(p.id, 'isDailySpecial', p.isDailySpecial)} className="data-[state=checked]:bg-amber-400"/></div>
                         </div>
                         <div className="flex flex-col gap-2 border-l pl-4">
                             <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setIsProductDialogOpen(true); setProductForm({ name: p.name, description: p.description||"", price: String(p.price), ingredients: p.ingredients||"", categoryId: String(p.categoryId), image: p.image||"" }); }}><Pencil className="w-4 h-4 text-blue-600" /></Button>
@@ -366,7 +217,6 @@ const Dashboard = () => {
                 ))}
             </TabsContent>
 
-            {/* --- PESTAÑA CATEGORÍAS --- */}
             <TabsContent value="categories" className="space-y-2">
                 {filteredCategories.map((c) => (
                     <div key={c.id} className="p-4 rounded-xl border bg-white flex items-center justify-between">
@@ -381,7 +231,7 @@ const Dashboard = () => {
         </Tabs>
       </main>
 
-      {/* --- BOTÓN FLOTANTE --- */}
+      {/* FAB */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
         <AnimatePresence>
           {isFabOpen && (
@@ -400,27 +250,14 @@ const Dashboard = () => {
         <Button onClick={() => setIsFabOpen(!isFabOpen)} className={`h-14 w-14 rounded-full shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary hover:scale-105'}`}><Plus/></Button>
       </div>
 
-      {/* DIALOGOS (PRODUCTO, CATEGORÍA, ERROR) */}
+      {/* DIALOGOS */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingProduct ? "Editar Plato" : "Nuevo Plato"}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                    <Label>Foto</Label>
-                    <div className="flex gap-2 items-center"><Input type="file" onChange={handleImageUpload} className="text-xs"/>{uploadingImg && <Loader2 className="animate-spin text-primary" />}</div>
-                    {productForm.image && <img src={productForm.image} className="h-32 w-full object-cover rounded-lg border" />}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Nombre</Label><Input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></div>
-                    <div className="space-y-2"><Label>Precio</Label><Input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} /></div>
-                </div>
-                <div className="space-y-2">
-                    <Label>Categoría</Label>
-                    <Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}>
-                        <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                        <SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                </div>
+                <div className="space-y-2"><Label>Foto</Label><div className="flex gap-2 items-center"><Input type="file" onChange={handleImageUpload} className="text-xs"/>{uploadingImg && <Loader2 className="animate-spin text-primary" />}</div>{productForm.image && <img src={productForm.image} className="h-32 w-full object-cover rounded-lg border" />}</div>
+                <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Nombre</Label><Input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></div><div className="space-y-2"><Label>Precio</Label><Input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} /></div></div>
+                <div className="space-y-2"><Label>Categoría</Label><Select value={productForm.categoryId} onValueChange={v => setProductForm({...productForm, categoryId: v})}><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="space-y-2"><Label>Ingredientes</Label><Input placeholder="Ej: Tomate, Queso" value={productForm.ingredients} onChange={e => setProductForm({...productForm, ingredients: e.target.value})} /></div>
                 <div className="space-y-2"><Label>Descripción</Label><Textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} /></div>
                 <Button onClick={handleSaveProduct} className="w-full" disabled={uploadingImg}>{editingProduct ? "Guardar Cambios" : "Crear Plato"}</Button>
@@ -429,57 +266,14 @@ const Dashboard = () => {
       </Dialog>
 
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent>
-            <DialogHeader><DialogTitle>{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle></DialogHeader>
-            <Input value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} placeholder="Nombre" />
-            <Button onClick={handleSaveCategory} className="w-full mt-4">Guardar</Button>
-        </DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle></DialogHeader><Input value={categoryFormName} onChange={e => setCategoryFormName(e.target.value)} placeholder="Nombre" /><Button onClick={handleSaveCategory} className="w-full mt-4">Guardar</Button></DialogContent>
       </Dialog>
 
       <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
-        <DialogContent className="border-l-4 border-l-red-500">
-            <DialogHeader><DialogTitle className="text-red-600 flex gap-2"><AlertTriangle/> No se puede eliminar</DialogTitle><DialogDescription>Tiene productos dentro.</DialogDescription></DialogHeader>
-            <ul className="list-disc pl-5 text-sm bg-slate-50 p-2 rounded max-h-32 overflow-y-auto">{conflictProducts.map((p,i)=><li key={i}>{p}</li>)}</ul>
-            <Button onClick={()=>setIsConflictDialogOpen(false)}>Entendido</Button>
-        </DialogContent>
+        <DialogContent className="border-l-4 border-l-red-500"><DialogHeader><DialogTitle className="text-red-600 flex gap-2"><AlertTriangle/> No se puede eliminar</DialogTitle><DialogDescription>Tiene productos dentro.</DialogDescription></DialogHeader><ul className="list-disc pl-5 text-sm bg-slate-50 p-2 rounded max-h-32 overflow-y-auto">{conflictProducts.map((p,i)=><li key={i}>{p}</li>)}</ul><Button onClick={()=>setIsConflictDialogOpen(false)}>Entendido</Button></DialogContent>
       </Dialog>
-        
-              {/* --- DIALOGO CÓDIGO QR --- */}
-      <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
-      <DialogContent className="sm:max-w-md flex flex-col items-center">
-          <DialogHeader className="text-center">
-              <DialogTitle className="text-xl">Menú Digital</DialogTitle>
-              <DialogDescription>
-                  Escanea o imprime este código para tus mesas.
-              </DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-6 bg-white rounded-xl shadow-sm border my-4 flex flex-col items-center gap-4">
-              {/* El componente QR */}
-              <div className="bg-white p-2">
-                  <QRCode
-                      id="QRCode"
-                      value={window.location.origin} // Toma la URL actual automáticamente
-                      size={200}
-                      level="H" // Nivel de corrección alto (se ve mejor)
-                      className="h-auto max-w-full"
-                  />
-              </div>
-              <p className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-1 rounded">
-                  {window.location.origin}
-              </p>
-          </div>
-
-          <DialogFooter className="w-full sm:justify-center">
-              <Button onClick={handleDownloadQR} className="w-full sm:w-auto gap-2 bg-slate-900 hover:bg-slate-800">
-                  <Download className="w-4 h-4" /> Descargar Imagen QR
-              </Button>
-          </DialogFooter>
-      </DialogContent>
-      </Dialog>
-
     </div>
   );
 };
 
-export default Dashboard;
+export default Dashboard; // <--- AQUÍ ESTÁ EL DEFAULT EXPORT QUE FALTABA
