@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Plus } from "lucide-react"; 
 import { Product } from "../data/menuData";
 import { Button } from "@/components/ui/button";
+import { Product } from "@/features/menu/data/menuData";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -20,6 +22,7 @@ const ProductCard = ({ product, onClick, onAdd }: ProductCardProps) => {
       }`}
       onClick={() => onClick(product)}
     >
+<<<<<<< HEAD
       {/* 1. IMAGEN CUADRADA A LA IZQUIERDA (Diseño Original) */}
       <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 relative">
         <img
@@ -34,6 +37,22 @@ const ProductCard = ({ product, onClick, onAdd }: ProductCardProps) => {
             </span>
           </div>
         )}
+=======
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-display text-lg font-semibold text-foreground truncate">
+            {product.name}
+          </h3>
+          {product.isNew && <span className="badge-new flex-shrink-0">Nuevo</span>}
+          {product.isSoldOut && <span className="badge-soldout flex-shrink-0">Agotado</span>}
+        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+          {product.description}
+        </p>
+        <p className="font-semibold text-primary text-lg">
+            {formatCurrency(product.price)}
+        </p>
+>>>>>>> origin/main
       </div>
 
       {/* 2. CONTENIDO A LA DERECHA */}

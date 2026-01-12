@@ -2,6 +2,9 @@ import { X, Info, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "../data/menuData";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
+import { Product } from "@/features/menu/data/menuData";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProductModalProps {
   product: Product | null;
@@ -56,10 +59,26 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
               </div>
             </div>
 
+<<<<<<< HEAD
             {/* Contenido Scrollable */}
             <div className="p-6 overflow-y-auto flex-1 scrollbar-hide">
               <p className="text-muted-foreground leading-relaxed text-sm">
                 {product.fullDescription || product.description}
+=======
+            {/* Contenido Limpio */}
+            <div className="p-6 pt-8"> {/* Padding ajustado */}
+              <div className="flex items-start justify-between mb-3">
+                <h2 className="font-serif text-2xl font-bold text-slate-900 leading-tight">
+                  {product.name}
+                </h2>
+                <p className="font-bold text-xl text-amber-600 shrink-0 ml-4">
+                    {formatCurrency(product.price)}
+                </p>
+              </div>
+
+              <p className="text-slate-600 mb-8 leading-relaxed text-sm font-light">
+                {product.fullDescription}
+>>>>>>> origin/main
               </p>
 
               {product.ingredients && product.ingredients.length > 0 && (

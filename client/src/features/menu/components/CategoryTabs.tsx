@@ -15,9 +15,9 @@ interface CategoryTabsProps {
 
 const CategoryTabs = ({ categories, activeCategory, onCategoryChange }: CategoryTabsProps) => {
   return (
-    <section className="py-4 border-b border-border">
-      <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2 px-4">
+    <section className="py-4 border-b border-border bg-background/95 backdrop-blur z-10 sticky top-0">
+      <div className="overflow-x-auto scrollbar-orange pb-3 px-1">
+        <div className="flex gap-2 px-4 min-w-max">
           {/* Ahora mapeamos las "categories" que recibimos por props */}
           {categories.map((category) => (
             <motion.button
