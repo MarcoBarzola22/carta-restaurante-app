@@ -32,7 +32,9 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     // Login exitoso
-    res.json({ success: true, token: "admin-token-secreto-123", username: admin.username });
+    // Login exitoso
+  const secretToken = process.env.JWT_SECRET || "secreto-por-defecto";
+  res.json({ success: true, token: secretToken, username: admin.username });
   } catch (error) {
     res.status(500).json({ error: "Error en el servidor" });
   }
