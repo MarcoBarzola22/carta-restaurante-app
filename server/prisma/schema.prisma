@@ -40,3 +40,13 @@ model Product {
   category       Category @relation(fields: [categoryId], references: [id])
   createdAt      DateTime @default(now())
 }
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  customer  String
+  address   String?
+  type      String   // "DELIVERY" o "RETIRO"
+  total     Float
+  details   String   // Aquí guardamos qué pidió (Ej: "2x Hamburguesas...")
+  createdAt DateTime @default(now())
+}
