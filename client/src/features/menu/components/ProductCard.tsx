@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Product } from "@/features/menu/data/menuData";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -33,7 +34,7 @@ const ProductCard = ({ product, onClick, index }: ProductCardProps) => {
           {product.description}
         </p>
         <p className="font-semibold text-primary text-lg">
-          €{product.price.toFixed(2)}
+            {formatCurrency(product.price)}
         </p>
       </div>
       <div className="flex-shrink-0">

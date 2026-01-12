@@ -114,6 +114,51 @@
 }
 
 @layer components {
+
+  /* --- SCROLLBAR PREMIUM (Versión "Invisible & Glow") --- */
+  .scrollbar-orange {
+    scroll-behavior: smooth;
+    /* Firefox: Color Naranja Claro / Fondo Transparente */
+    scrollbar-width: thin; 
+    scrollbar-color: transparent transparent; /* Invisible por defecto */
+    transition: scrollbar-color 0.3s ease;
+  }
+  /* Mostrar solo al pasar el mouse (hover) o tocar */
+  .scrollbar-orange:hover,
+  .scrollbar-orange:active {
+    /* En Firefox cambiamos a naranja clarito al hacer hover */
+    scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+  }
+
+  /* --- Webkit (Chrome, Safari, Edge) --- */
+  .scrollbar-orange::-webkit-scrollbar {
+    height: 4px; /* Súper finita (antes era 6px) */
+    background: transparent;
+  }
+
+  .scrollbar-orange::-webkit-scrollbar-thumb {
+    background: transparent; /* Invisible por defecto */
+    border-radius: 100vh;
+    transition: all 0.3s ease;
+  }
+
+  /* Cuando pasas el mouse por encima de la lista de categorías */
+  .scrollbar-orange:hover::-webkit-scrollbar-thumb {
+    /* Naranja muy clarito (0.4 de opacidad) */
+    background: hsl(var(--primary) / 0.4); 
+    
+    /* Sombra "Glow" estética (Similar al carrusel) */
+    /* Box-shadow no siempre renderiza perfecto en scrollbars, 
+      así que usamos un degradado sutil si el navegador lo soporta, 
+       o confiamos en el color translúcido */
+    box-shadow: 0 0 10px 2px hsl(var(--primary) / 0.3);
+  }
+
+  /* Si el usuario agarra la barra directamente */
+  .scrollbar-orange::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7); /* Un poco más visible al arrastrar */
+  }
+
   .food-card {
     @apply bg-card rounded-2xl overflow-hidden transition-all duration-300;
     box-shadow: var(--card-shadow);
