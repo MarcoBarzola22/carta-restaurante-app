@@ -8,7 +8,15 @@ dotenv.config(); // Cargar variables de entorno
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors());
+// Configuración de seguridad (CORS)
+const corsOptions = {
+  // Cuando subas a Vercel, aquí pondrás la URL de tu frontend. 
+  // Por ahora el "*" permite a todos, pero lo ajustaremos con las variables de entorno.
+  origin: process.env.FRONTEND_URL || "*", 
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
@@ -190,6 +198,39 @@ app.put("/api/categories/:id", async (req, res) => {
     res.status(500).json({ error: "Error al editar categoría" });
   }
 });
+
+// --- RUTA: GUARDAR PEDIDO (Para el Cliente) ---
+app.post("/api/orders", async (req, res) => {
+  const { customer, address, type, total, details } = req.body;
+  try {
+    const order = await prisma.order.create({
+      data: {
+        customer,
+        address,
+        type,         // "DELIVERY" o "RETIRO"
+        total: parseFloat(total),
+        details       // Ej: "2x Hamburguesa ($1000)"
+      }
+    });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: "Error creando el pedido" });
+  }
+});
+
+// --- RUTA: LEER PEDIDOS (Para el Admin) ---
+app.get("/api/orders", async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' }, // Los más nuevos primero
+      take: 50
+    });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: "Error obteniendo pedidos" });
+  }
+});
+
 
 // Iniciar servidor
 app.listen(PORT, () => {

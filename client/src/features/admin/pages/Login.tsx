@@ -18,7 +18,8 @@ const Login = () => { // Quitamos el "export" de aquí
 
     try {
       // Petición al backend
-      const response = await axios.post("http://localhost:3000/api/auth/login", formData);
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const response = await axios.post(`${API_URL}/api/auth/login`, formData);
       
       if (response.data.success) {
         // Guardamos la sesión
