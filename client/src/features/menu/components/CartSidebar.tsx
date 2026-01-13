@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { ShoppingCart, Trash2, MapPin, User, Store, Bike, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
-// ⚠️ PON TU NÚMERO AQUÍ (Sin espacios, sin +)
-// Leemos la variable de entorno
+// 1. DEFINIMOS LA URL BASE (Igual que en Dashboard)
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const RESTAURANT_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || "5490000000000";
 
 export const CartSidebar = () => {
@@ -29,12 +29,11 @@ export const CartSidebar = () => {
     if (deliveryType === "DELIVERY" && !address.trim()) return toast({ title: "Falta dirección", variant: "destructive" });
 
     setLoading(true);
-    // Crear string de detalles
     const detailsText = items.map(i => `${i.quantity}x ${i.name} ($${i.price * i.quantity})`).join('\n');
 
     try {
-      // 1. Guardar en Base de Datos (Generar ID)
-      const { data: order } = await axios.post("http://localhost:3000/api/orders", {
+      // 2. CORRECCIÓN AQUÍ: Usamos la variable API_URL en lugar de escribir "localhost" a mano
+      const { data: order } = await axios.post(`${API_URL}/api/orders`, {
         customer: name,
         address: deliveryType === "DELIVERY" ? address : null,
         type: deliveryType,
@@ -42,7 +41,6 @@ export const CartSidebar = () => {
         details: detailsText
       });
 
-      // 2. Mensaje de WhatsApp
       const message = `Hola! Quiero hacer un pedido:
 ${detailsText}
 
@@ -61,6 +59,7 @@ _(No borrar este ID)_`;
       toast({ title: "¡Pedido Enviado!", description: "Continúa en WhatsApp" });
 
     } catch (e) { 
+        console.error(e);
         toast({ title: "Error", description: "No se pudo crear el pedido", variant: "destructive" }); 
     } finally { 
         setLoading(false); 
@@ -79,7 +78,11 @@ _(No borrar este ID)_`;
       </SheetTrigger>
 
       <SheetContent className="flex flex-col w-full sm:max-w-md">
-        <SheetHeader><SheetTitle>Tu Carrito 🛒</SheetTitle></SheetHeader>
+        <SheetHeader>
+            <SheetTitle>Tu Carrito 🛒</SheetTitle>
+            {/* Agregamos Description para evitar el warning amarillo */}
+            <SheetDescription>Revisa tu pedido antes de enviarlo.</SheetDescription>
+        </SheetHeader>
         
         <ScrollArea className="flex-1 pr-2 -mr-2 my-4">
             {items.length === 0 ? 
@@ -90,12 +93,12 @@ _(No borrar este ID)_`;
             : items.map((item) => (
                 <div key={item.id} className="flex gap-3 mb-4 p-2 border rounded-lg bg-slate-50/50">
                   <div className="h-16 w-16 rounded overflow-hidden bg-slate-200 flex-shrink-0">
-                      <img src={item.image} className="h-full w-full object-cover"/>
+                      <img src={item.image || ""} className="h-full w-full object-cover" alt={item.name}/>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-sm truncate">{item.name}</h4>
                     <div className="flex items-center justify-between mt-1">
-                        <p className="text-primary font-bold text-sm">${item.price * item.quantity}</p>
+                        <p className="text-primary font-bold text-sm">${Number(item.price) * item.quantity}</p>
                         <div className="flex items-center gap-2 bg-white rounded-md border px-1 h-7 shadow-sm">
                             <button onClick={() => updateQuantity(String(item.id), -1)} className="px-1.5 hover:bg-slate-100">-</button>
                             <span className="text-xs w-4 text-center">{item.quantity}</span>
