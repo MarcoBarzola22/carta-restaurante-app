@@ -1,29 +1,47 @@
 // client/src/features/menu/components/Header.tsx
-import { ChefHat } from "lucide-react";
+import { ChefHat } from "lucide-react"; 
+
+// 1. IMPORTA TUS IMÁGENES AQUÍ
+// CORRECCIÓN 1: Agregué la comilla que faltaba al final
+import imgFondo from "@/assets/FondoSr-Arepa.jpg"; 
+import imgLogo from "@/assets/logoSinBordes.png"; 
 
 const Header = () => {
   return (
     <header className="relative w-full h-[250px] overflow-hidden">
-      {/* 1. Imagen de Fondo con Efecto Blur */}
-      {/* NOTA: Cambia la URL por una foto real de tu restaurante más adelante */}
+      {/* 1. IMAGEN DE FONDO */}
       <div 
-        className="absolute inset-0 bg-cover bg-center blur-[2px] brightness-50 transform scale-105"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop')" }} 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-[2px] brightness-50 transform scale-105"
+        style={{ 
+           backgroundImage: `url(${imgFondo})` 
+        }} 
       />
       
-      {/* 2. Contenido Sobrepuesto (Logo y Texto) */}
+      {/* 2. Contenido Sobrepuesto */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full text-white px-4 text-center">
-        <div className="w-24 h-24 rounded-full border-4 border-white/20 shadow-xl mb-4 bg-black/40 flex items-center justify-center backdrop-blur-md">
-           {/* Usamos un ícono por ahora, luego pones <img src="/logo.png" /> */}
-           <ChefHat className="w-12 h-12 text-white" />
+        
+        {/* CÍRCULO DEL LOGO */}
+        <div className="w-28 h-28 rounded-full border-4 border-white/20 shadow-xl mb-3 bg-black/40 flex items-center justify-center backdrop-blur-md overflow-hidden relative">
+           
+           {imgLogo ? (
+             <img 
+               src={imgLogo} /* CORRECCIÓN 2: Usar la variable imgLogo entre llaves {} */
+               alt="Logo Sr. Arepa" 
+               className="w-full h-full object-cover" 
+             />
+           ) : (
+             <ChefHat className="w-12 h-12 text-white" />
+           )}
         </div>
         
-        <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wider mb-2 shadow-sm">
-          SABORES
+        {/* TÍTULO PRINCIPAL */}
+        <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wider mb-2 shadow-sm text-amber-400 drop-shadow-md">
+          Sr. Arepa
         </h1>
         
-        <p className="text-xs md:text-sm font-medium opacity-90 uppercase tracking-[0.3em] text-amber-400">
-          Villa Mercedes • Food Truck
+        {/* SUBTÍTULO */}
+        <p className="text-xs md:text-sm font-medium opacity-90 uppercase tracking-[0.2em] text-white">
+          Villa Mercedes • Comida Típica Venezolana
         </p>
       </div>
     </header>
