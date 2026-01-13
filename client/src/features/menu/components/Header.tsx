@@ -3,7 +3,7 @@ import { ChefHat } from "lucide-react";
 
 // 1. IMPORTA TUS IMÁGENES AQUÍ
 // CORRECCIÓN 1: Agregué la comilla que faltaba al final
-import imgFondo from "@/assets/FondoSr-Arepa.jpg"; 
+import imgFondo from "@/assets/FondoSr-Arepa.JPG"; 
 import imgLogo from "@/assets/logoConBordes.png"; 
 
 const Header = () => {

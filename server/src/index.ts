@@ -3,7 +3,7 @@ import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 
-dotenv.config(); // Cargar variables de entorno
+dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
@@ -18,29 +18,7 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', server: 'Carta Digital API' });
 });
 
-// --- RUTA 1: LOGIN ---
-app.post("/api/auth/login", async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    const admin = await prisma.admin.findUnique({ where: { username } });
-    
-    // Validación simple (en producción usa bcrypt)
-    if (!admin || admin.password !== password) {
-      res.status(401).json({ error: "Credenciales inválidas" });
-      return;
-    }
-
-    // Login exitoso
-    // Login exitoso
-  const secretToken = process.env.JWT_SECRET || "secreto-por-defecto";
-  res.json({ success: true, token: secretToken, username: admin.username });
-  } catch (error) {
-    res.status(500).json({ error: "Error en el servidor" });
-  }
-});
-
-// --- RUTA 2: OBTENER PRODUCTOS ---
+// --- RUTAS DE PRODUCTOS ---
 app.get("/api/products", async (req, res) => {
   try {
     const products = await prisma.product.findMany({
@@ -49,11 +27,11 @@ app.get("/api/products", async (req, res) => {
     });
     res.json(products);
   } catch (error) {
+    console.error("❌ Error obteniendo productos:", error);
     res.status(500).json({ error: "Error obteniendo productos" });
   }
 });
 
-// --- RUTA 3: CREAR PRODUCTO ---
 app.post("/api/products", async (req, res) => {
   const { name, price, description, image, ingredients, categoryId } = req.body;
   try {
@@ -70,16 +48,14 @@ app.post("/api/products", async (req, res) => {
     });
     res.json(product);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error creando producto:", error);
     res.status(500).json({ error: "No se pudo crear el producto" });
   }
 });
 
-// --- RUTA 4: ACTUALIZAR ESTADO (Switches) ---
 app.patch("/api/products/:id", async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-
   try {
     const product = await prisma.product.update({
       where: { id: parseInt(id) },
@@ -87,11 +63,12 @@ app.patch("/api/products/:id", async (req, res) => {
     });
     res.json(product);
   } catch (error) {
+    console.error("❌ Error actualizando producto:", error);
     res.status(500).json({ error: "Error actualizando producto" });
   }
 });
 
-// --- RUTA 5: CATEGORIAS (ESTA ES LA QUE TE FALTABA) ---
+// --- RUTAS DE CATEGORÍAS (Aquí estaba tu problema principal) ---
 app.get("/api/categories", async (req, res) => {
   try {
     const categories = await prisma.category.findMany({
@@ -99,6 +76,7 @@ app.get("/api/categories", async (req, res) => {
     });
     res.json(categories);
   } catch (error) {
+    console.error("❌ Error obteniendo categorías:", error);
     res.status(500).json({ error: "Error obteniendo categorías" });
   }
 });
@@ -106,27 +84,30 @@ app.get("/api/categories", async (req, res) => {
 app.post("/api/categories", async (req, res) => {
   const { name } = req.body;
   try {
+    if (!name) throw new Error("El nombre es obligatorio");
+    
     const category = await prisma.category.create({
       data: { name }
     });
     res.json(category);
   } catch (error) {
+    console.error("❌ Error creando categoría:", error);
     res.status(500).json({ error: "No se pudo crear la categoría" });
   }
 });
 
-// --- RUTA: ELIMINAR PRODUCTO ---
+// --- RESTO DE RUTAS (Eliminar, Editar, Pedidos) ---
 app.delete("/api/products/:id", async (req, res) => {
   const { id } = req.params;
   try {
     await prisma.product.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
   } catch (error) {
+    console.error("❌ Error eliminando producto:", error);
     res.status(500).json({ error: "Error al eliminar producto" });
   }
 });
 
-// --- RUTA: EDITAR PRODUCTO ---
 app.put("/api/products/:id", async (req, res) => {
   const { id } = req.params;
   const { name, price, description, isAvailable, isDailySpecial, image, ingredients, categoryId } = req.body;
@@ -146,37 +127,34 @@ app.put("/api/products/:id", async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
+    console.error("❌ Error editando producto:", error);
     res.status(500).json({ error: "Error al editar producto" });
   }
 });
 
-// --- RUTA: ELIMINAR CATEGORÍA ---
 app.delete("/api/categories/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    // 1. Verificar si hay productos en esta categoría
     const productsInCategory = await prisma.product.findMany({
       where: { categoryId: parseInt(id) },
-      select: { name: true } // Solo necesitamos los nombres para mostrar al usuario
+      select: { name: true }
     });
 
-    // 2. Si hay productos, BLOQUEAMOS y avisamos cuáles son
     if (productsInCategory.length > 0) {
       return res.status(409).json({ 
         error: "Categoría con productos",
-        products: productsInCategory.map(p => p.name) // Enviamos la lista
+        products: productsInCategory.map(p => p.name)
       });
     }
 
-    // 3. Si está vacía, procedemos a borrar
     await prisma.category.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
   } catch (error) {
+    console.error("❌ Error eliminando categoría:", error);
     res.status(500).json({ error: "Error al eliminar categoría" });
   }
 });
 
-// --- RUTA: EDITAR CATEGORÍA ---
 app.put("/api/categories/:id", async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
@@ -187,11 +165,11 @@ app.put("/api/categories/:id", async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
+    console.error("❌ Error editando categoría:", error);
     res.status(500).json({ error: "Error al editar categoría" });
   }
 });
 
-// --- RUTA: GUARDAR PEDIDO (Para el Cliente) ---
 app.post("/api/orders", async (req, res) => {
   const { customer, address, type, total, details } = req.body;
   try {
@@ -199,32 +177,31 @@ app.post("/api/orders", async (req, res) => {
       data: {
         customer,
         address,
-        type,         // "DELIVERY" o "RETIRO"
+        type,
         total: parseFloat(total),
-        details       // Ej: "2x Hamburguesa ($1000)"
+        details
       }
     });
     res.json(order);
   } catch (error) {
+    console.error("❌ Error creando pedido:", error);
     res.status(500).json({ error: "Error creando el pedido" });
   }
 });
 
-// --- RUTA: LEER PEDIDOS (Para el Admin) ---
 app.get("/api/orders", async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' }, // Los más nuevos primero
+      orderBy: { createdAt: 'desc' },
       take: 50
     });
     res.json(orders);
   } catch (error) {
+    console.error("❌ Error obteniendo pedidos:", error);
     res.status(500).json({ error: "Error obteniendo pedidos" });
   }
 });
 
-
-// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
