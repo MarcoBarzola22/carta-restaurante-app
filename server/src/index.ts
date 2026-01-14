@@ -202,6 +202,26 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
+app.post("/api/auth/login", (req, res) => {
+  const { username, password } = req.body;
+
+  // Credenciales predeterminadas (puedes cambiarlas o usar variables de entorno)
+  const VALID_USER = "admin";
+  const VALID_PASS = "admin123";
+
+  if (username === VALID_USER && password === VALID_PASS) {
+    // Si coincide, enviamos éxito y un token simulado
+    return res.json({ 
+      success: true, 
+      token: "demo-token-123", 
+      user: { username: VALID_USER } 
+    });
+  }
+
+  // Si no coincide, devolvemos error 401 (No autorizado)
+  return res.status(401).json({ error: "Credenciales inválidas" });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });

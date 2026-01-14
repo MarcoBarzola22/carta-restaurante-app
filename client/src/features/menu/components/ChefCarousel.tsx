@@ -1,23 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Product } from "@/features/menu/data/menuData"; // Quitamos getChefRecommendations
+import { Product } from "@/features/menu/data/menuData"; 
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-// MODIFICACIÓN 1: La interfaz ahora acepta 'products'
 interface ChefCarouselProps {
   products: Product[]; 
   onProductClick: (product: Product) => void;
 }
 
-// MODIFICACIÓN 2: Recibimos 'products' por props (desde la Base de Datos)
 const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
-  // const products = getChefRecommendations(); <--- BORRAMOS ESTO (Ya vienen por props)
-  
   const [activeIndex, setActiveIndex] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 1. NUEVO: Estado para detectar si es celular y calcular márgenes exactos
+  const [isMobile, setIsMobile] = useState(false);
 
-  // --- LÓGICA DE MOVIMIENTO (IDÉNTICA A TU DISEÑO ORIGINAL) ---
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile(); // Verificar al cargar
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const nextSlide = () => {
     setActiveIndex((current) => (current + 1) % products.length);
   };
@@ -26,11 +31,10 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
     setActiveIndex((current) => (current - 1 + products.length) % products.length);
   };
 
-  // --- AUTO PLAY ---
   useEffect(() => {
     startTimer();
     return () => stopTimer();
-  }, [products.length, activeIndex]); // Agregamos activeIndex para reiniciar timer al cambiar
+  }, [products.length, activeIndex]); 
 
   const startTimer = () => {
     stopTimer();
@@ -41,40 +45,34 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  const handleManualNext = () => {
-    nextSlide();
-    startTimer();
-  };
+  const handleManualNext = () => { nextSlide(); startTimer(); };
+  const handleManualPrev = () => { prevSlide(); startTimer(); };
 
-  const handleManualPrev = () => {
-    prevSlide();
-    startTimer();
-  };
-
-  // --- CLICK INTELIGENTE ---
   const handleCardClick = (index: number, product: Product) => {
-    // Calculamos la posición relativa considerando el loop infinito
     let position = index - activeIndex;
     const half = Math.floor(products.length / 2);
     if (position < -half) position += products.length;
     if (position > half) position -= products.length;
 
     if (position === 0) {
-      // Si ya es el del centro, abrimos el modal
       onProductClick(product);
     } else {
-      // Si es uno de los lados, lo traemos al centro
       setActiveIndex(index);
       startTimer(); 
     }
   };
 
-  // Si no hay productos destacados, no mostramos nada
   if (!products || products.length === 0) return null;
+
+  // 2. CÁLCULO DE CENTRADO EXACTO
+  // Móvil: w-64 (256px) -> Mitad 128px. Altura (Aspect 4/5) ~320px -> Mitad 160px
+  // PC: w-72 (288px) -> Mitad 144px. Altura (Aspect 4/5) ~360px -> Mitad 180px
+  const marginLeft = isMobile ? -128 : -144;
+  const marginTop = isMobile ? -160 : -180;
+  const xOffset = isMobile ? 160 : 240;
 
   return (
     <section className="py-8 bg-slate-50 overflow-hidden flex flex-col items-center">
-      {/* Título Original */}
       <div className="px-4 mb-6 text-center z-20">
         <div className="inline-flex items-center gap-2 mb-2 bg-amber-100 px-4 py-1 rounded-full shadow-sm">
           <Star className="w-4 h-4 text-amber-600 fill-amber-600" />
@@ -87,46 +85,36 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
         </h2>
       </div>
 
-      {/* Contenedor del Carrusel */}
       <div className="relative w-full h-[400px] flex items-center justify-center">
         
-        {/* Botones de Navegación */}
+        {/* 3. CORRECCIÓN FLECHAS: Centrado vertical exacto (top-1/2 -translate-y-1/2) */}
         <button 
           onClick={handleManualPrev}
-          className="absolute left-2 md:left-10 z-30 p-3 bg-white/80 backdrop-blur rounded-full shadow-lg hover:bg-white transition-all text-slate-800 border border-slate-100 hover:scale-110"
+          className="absolute left-2 md:left-10 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/80 backdrop-blur rounded-full shadow-lg hover:bg-white transition-all text-slate-800 border border-slate-100 hover:scale-110"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
         <button 
           onClick={handleManualNext}
-          className="absolute right-2 md:right-10 z-30 p-3 bg-white/80 backdrop-blur rounded-full shadow-lg hover:bg-white transition-all text-slate-800 border border-slate-100 hover:scale-110"
+          className="absolute right-2 md:right-10 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/80 backdrop-blur rounded-full shadow-lg hover:bg-white transition-all text-slate-800 border border-slate-100 hover:scale-110"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
 
-        {/* --- AREA DE TARJETAS (TU ANIMACIÓN 3D) --- */}
         <div className="relative w-full max-w-[1200px] h-full flex items-center justify-center perspective-1000">
           <AnimatePresence mode="popLayout">
             {products.map((product, index) => {
-              // Cálculos matemáticos de posición (Exactamente tu código original)
               let position = (index - activeIndex);
-              
-              // Ajuste Loop Infinito
               const half = Math.floor(products.length / 2);
               if (position < -half) position += products.length;
               if (position > half) position -= products.length;
 
-              // Solo renderizamos los visibles para mejorar rendimiento
               if (Math.abs(position) > 2) return null;
 
               const isCenter = position === 0;
               const dist = Math.abs(position);
               
-              // DEFINICIÓN DE ANCHOS Y ESPACIOS
-              const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; 
-              const xOffset = isMobile ? 160 : 240;
-
               return (
                 <motion.div
                   key={product.id}
@@ -138,13 +126,9 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
                     zIndex: 10 - dist,
                     opacity: isCenter ? 1 : (dist === 1 ? 0.7 : 0.3),
                     filter: isCenter ? "blur(0px)" : `blur(${dist * 2}px)`,
-                    rotateY: position * 5 // Pequeño giro 3D
+                    rotateY: position * 5
                   }}
-                  transition={{ 
-                    type: "spring", 
-                    stiffness: 250, 
-                    damping: 30
-                  }}
+                  transition={{ type: "spring", stiffness: 250, damping: 30 }}
                   onClick={() => handleCardClick(index, product)}
                   
                   className={`absolute top-1/2 left-1/2 
@@ -153,14 +137,15 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
                     cursor-pointer transition-shadow duration-300
                     ${isCenter ? 'shadow-amber-500/20 ring-4 ring-white' : 'shadow-slate-400/10'}
                   `}
+                  // 4. APLICAMOS EL MARGEN DINÁMICO
                   style={{
-                    marginTop: '-200px',
-                    marginLeft: '-144px', // Centrado manual compensando el ancho/2
+                    marginTop: `${marginTop}px`,
+                    marginLeft: `${marginLeft}px`, 
                   }}
                 >
                   <div className="relative h-3/4 w-full bg-slate-200">
                     <img
-                      src={product.image}
+                      src={product.image || ""}
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />
@@ -169,7 +154,7 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
                     {isCenter && (
                       <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full shadow-lg border border-slate-100">
                         <span className="font-bold text-slate-900 text-sm">
-                          {formatCurrency(product.price)}
+                          {formatCurrency(Number(product.price))}
                         </span>
                       </div>
                     )}
@@ -182,19 +167,18 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
                       {product.name}
                     </h3>
                     
-                    {/* Botón visual que invita a hacer click */}
                     <motion.div 
                       initial={{ opacity: 0 }} 
                       animate={{ opacity: isCenter ? 1 : 0.5 }}
                       className="mt-2"
                     >
-                       <span className={`text-[10px] uppercase tracking-widest font-bold border-b pb-0.5
-                         ${isCenter 
-                           ? 'text-amber-600 border-amber-200' 
-                           : 'text-slate-400 border-transparent'}
-                       `}>
-                         {isCenter ? 'Ver Detalles' : 'Ver Plato'}
-                       </span>
+                        <span className={`text-[10px] uppercase tracking-widest font-bold border-b pb-0.5
+                          ${isCenter 
+                            ? 'text-amber-600 border-amber-200' 
+                            : 'text-slate-400 border-transparent'}
+                        `}>
+                          {isCenter ? 'Ver Detalles' : 'Ver Plato'}
+                        </span>
                     </motion.div>
                   </div>
                 </motion.div>

@@ -5,7 +5,7 @@ import axios from "axios";
 // IMPORTACIONES UNIFICADAS (Sin duplicados)
 import { 
   ChefHat, Plus, LogOut, Loader2, Star, Utensils, Tag, Pencil, 
-  Trash2, Search, AlertTriangle, Receipt, Clock, User, MapPin 
+  Trash2, Search, AlertTriangle, Receipt, Clock, User, MapPin, QrCode, Download 
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QRCode from "react-qr-code";
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME; 
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_PRESET;
@@ -57,6 +58,10 @@ const Dashboard = () => {
   const [uploadingImg, setUploadingImg] = useState(false);
   const [productForm, setProductForm] = useState({ name: "", description: "", price: "", ingredients: "", categoryId: "", image: "" });
   const [categoryFormName, setCategoryFormName] = useState("");
+  const [isQRDialogOpen, setIsQRDialogOpen] = useState(false)
+
+// Obtenemos la URL actual para generar el QR (apunta a la raíz donde está el menú)
+const menuUrl = "https://carta-restaurante-app.vercel.app/";
 
   useEffect(() => { fetchData(); }, []);
 
@@ -72,6 +77,35 @@ const Dashboard = () => {
       setOrders(orderRes.data);
     } catch (error) { console.error(error); } 
     finally { setLoading(false); }
+  };
+
+  // 3. FUNCIÓN PARA DESCARGAR EL QR
+  const handleDownloadQR = () => {
+    const svg = document.getElementById("qr-code-svg");
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      if (ctx) {
+        ctx.fillStyle = "white"; // Fondo blanco para que se lea bien
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = "CodigoQR-Menu.png";
+        downloadLink.href = pngFile;
+        downloadLink.click();
+        toast({ title: "Descarga iniciada", description: "El código QR se ha guardado." });
+      }
+    };
+    
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,7 +193,19 @@ const Dashboard = () => {
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
              <Input placeholder="Buscar platos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 bg-secondary/50"/>
         </div>
-        <Button variant="ghost" onClick={handleLogout}><LogOut className="w-5 h-5"/></Button>
+        
+
+        {/* 4. BOTONES DEL HEADER (QR + LOGOUT) */}
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setIsQRDialogOpen(true)} className="flex items-center gap-2">
+                <QrCode className="w-5 h-5" />
+                <span className="font-medium">Código QR</span>
+            </Button>
+            <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+            <Button variant="ghost" onClick={() => navigate("/login")}>
+                <LogOut className="w-5 h-5"/>
+            </Button>
+        </div>    
       </header>
 
       {/* CONTENIDO */}
@@ -272,6 +318,32 @@ const Dashboard = () => {
 
       <Dialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
         <DialogContent className="border-l-4 border-l-red-500"><DialogHeader><DialogTitle className="text-red-600 flex gap-2"><AlertTriangle/> No se puede eliminar</DialogTitle><DialogDescription>Tiene productos dentro.</DialogDescription></DialogHeader><ul className="list-disc pl-5 text-sm bg-slate-50 p-2 rounded max-h-32 overflow-y-auto">{conflictProducts.map((p,i)=><li key={i}>{p}</li>)}</ul><Button onClick={()=>setIsConflictDialogOpen(false)}>Entendido</Button></DialogContent>
+      </Dialog>
+
+      {/* 5. NUEVO DIALOGO PARA EL CÓDIGO QR */}
+      <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
+        <DialogContent className="sm:max-w-md flex flex-col items-center">
+            <DialogHeader>
+                <DialogTitle className="text-center">Código QR del Menú</DialogTitle>
+                <DialogDescription className="text-center">
+                    Escanea para ver la carta o descarga la imagen para imprimir.
+                </DialogDescription>
+            </DialogHeader>
+            
+            <div className="p-6 bg-white rounded-xl shadow-inner border my-4">
+                <QRCode
+                    id="qr-code-svg"
+                    value={menuUrl}
+                    size={200}
+                    level="H" 
+                />
+            </div>
+            
+            <Button onClick={handleDownloadQR} className="w-full gap-2" variant="outline">
+                <Download className="w-4 h-4" />
+                Descargar Imagen
+            </Button>
+        </DialogContent>
       </Dialog>
     </div>
   );
