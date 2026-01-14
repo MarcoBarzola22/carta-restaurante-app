@@ -13,12 +13,12 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // 1. NUEVO: Estado para detectar si es celular y calcular márgenes exactos
+  // 1. ESTADO PARA DETECTAR CELULAR
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile(); // Verificar al cargar
+    checkMobile(); 
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
@@ -32,8 +32,10 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
   };
 
   useEffect(() => {
-    startTimer();
-    return () => stopTimer();
+    if (products.length > 0) {
+        startTimer();
+        return () => stopTimer();
+    }
   }, [products.length, activeIndex]); 
 
   const startTimer = () => {
@@ -64,12 +66,11 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
 
   if (!products || products.length === 0) return null;
 
-  // 2. CÁLCULO DE CENTRADO EXACTO
-  // Móvil: w-64 (256px) -> Mitad 128px. Altura (Aspect 4/5) ~320px -> Mitad 160px
-  // PC: w-72 (288px) -> Mitad 144px. Altura (Aspect 4/5) ~360px -> Mitad 180px
-  const marginLeft = isMobile ? -128 : -144;
-  const marginTop = isMobile ? -160 : -180;
-  const xOffset = isMobile ? 160 : 240;
+  // 2. CÁLCULOS MATEMÁTICOS PARA CENTRADO EXACTO
+  // Si es móvil usamos márgenes menores para compensar el ancho de pantalla
+  const marginLeft = isMobile ? -128 : -144; 
+  const marginTop = isMobile ? -160 : -180; // Ajuste vertical
+  const xOffset = isMobile ? 160 : 240; // Distancia entre tarjetas
 
   return (
     <section className="py-8 bg-slate-50 overflow-hidden flex flex-col items-center">
@@ -87,7 +88,7 @@ const ChefCarousel = ({ products, onProductClick }: ChefCarouselProps) => {
 
       <div className="relative w-full h-[400px] flex items-center justify-center">
         
-        {/* 3. CORRECCIÓN FLECHAS: Centrado vertical exacto (top-1/2 -translate-y-1/2) */}
+        {/* 3. FLECHAS CENTRADAS VERTICALMENTE */}
         <button 
           onClick={handleManualPrev}
           className="absolute left-2 md:left-10 top-1/2 -translate-y-1/2 z-30 p-3 bg-white/80 backdrop-blur rounded-full shadow-lg hover:bg-white transition-all text-slate-800 border border-slate-100 hover:scale-110"
