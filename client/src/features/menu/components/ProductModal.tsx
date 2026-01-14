@@ -78,14 +78,25 @@ const ProductModal = ({ product, isOpen, onClose, onAddToCart }: ProductModalPro
               )}
             </div>
 
-            {/* Footer Botón */}
+            {/* Footer Botón - CORREGIDO */}
             <div className="p-4 border-t bg-white">
               <Button 
                 onClick={() => onAddToCart(product)}
-                className="w-full h-12 text-base bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 shadow-lg"
+                disabled={product.isSoldOut} // Deshabilita si no está disponible
+                className={`w-full h-12 text-base flex items-center justify-center gap-2 shadow-lg transition-all
+                  ${product.isSoldOut 
+                    ? "bg-slate-300 hover:bg-slate-300 text-slate-500 cursor-not-allowed" // Estilo para Agotado
+                    : "bg-primary hover:bg-primary/90 text-white" // Estilo Normal
+                  }`}
               >
-                <ShoppingCart className="w-5 h-5" />
-                Agregar al Pedido
+                {product.isSoldOut ? (
+                    "Agotado"
+                ) : (
+                    <>
+                        <ShoppingCart className="w-5 h-5" />
+                        Agregar al Pedido
+                    </>
+                )}
               </Button>
             </div>
           </motion.div>

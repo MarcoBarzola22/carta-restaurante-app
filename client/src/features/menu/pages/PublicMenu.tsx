@@ -22,6 +22,7 @@ const PublicMenu = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // MANTENEMOS TU LÓGICA ORIGINAL: "all" por defecto
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,13 +61,21 @@ const PublicMenu = () => {
           price: Number(p.price),
           image: p.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
           ingredients: p.ingredients ? p.ingredients.split(',').map((i: string) => i.trim()) : [],
-          category: String(p.categoryId),
-          isSoldOut: !p.isAvailable,
+          category: String(p.categoryId), // Usamos String para comparar fácil
+          isSoldOut: !p.isAvailable,      // Mantenemos tu lógica de SoldOut
           isChefRecommended: p.isDailySpecial,
           isDailySpecial: p.isDailySpecial 
         }));
 
-        setCategories(adaptedCategories);
+        // --- AQUÍ ESTÁ LA MAGIA PARA EL "TODOS" ---
+        // Agregamos manualmente la categoría "Todos" al principio del array.
+        // Usamos el ID "all" para que coincida con tu useState("all") inicial.
+        const categoriesWithAll = [
+            { id: "all", name: "Todos", emoji: "🍽️" }, 
+            ...adaptedCategories
+        ];
+
+        setCategories(categoriesWithAll);
         setProducts(adaptedProducts);
       } catch (error) {
         console.error("Error cargando menú:", error);
@@ -79,6 +88,9 @@ const PublicMenu = () => {
   }, []);
 
   const heroProducts = products.filter(p => p.isChefRecommended);
+  
+  // TU FILTRO ORIGINAL FUNCIONA PERFECTO AHORA
+  // Porque activeCategory empieza en "all" y ahora el botón "Todos" tiene id "all".
   const filteredProducts = activeCategory === "all"
     ? products
     : products.filter(p => p.category === activeCategory);
@@ -108,6 +120,7 @@ const PublicMenu = () => {
             />
         )}
         
+        {/* Usamos tus props originales: categories, activeCategory, onCategoryChange */}
         <CategoryTabs
           categories={categories}
           activeCategory={activeCategory}
