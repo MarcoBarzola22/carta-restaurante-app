@@ -202,8 +202,8 @@ const menuUrl = "https://carta-restaurante-app.vercel.app/";
                 <span className="font-medium">Código QR</span>
             </Button>
             <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-            <Button variant="ghost" onClick={() => navigate("/login")}>
-                <LogOut className="w-5 h-5"/>
+            <Button variant="ghost" onClick={handleLogout}> {/* <--- AQUÍ USAMOS LA FUNCIÓN */}
+              <LogOut className="w-5 h-5"/>
             </Button>
         </div>    
       </header>
